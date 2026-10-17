@@ -1,5 +1,6 @@
 "use client"
 
+import SearchBar from "@/components/SearchBar";
 import {supabase} from "../../lib/client";
 
 async function fetchMajors() {
@@ -34,7 +35,11 @@ async function fetchProjects() {
 
 export default function Home() {
   return (
+
     <div>
+      <SearchBar />
+
+      {/*}
       <button onClick={async () => {
         const projects = await fetchProjects();
         console.log(projects);
@@ -53,7 +58,10 @@ export default function Home() {
         }}  
       >
         Load majors
-      </button>
+      </button> 
+      */}
+
+
     </div>
   );
 }
