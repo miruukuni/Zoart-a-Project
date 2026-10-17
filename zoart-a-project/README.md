@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# Zot a Project — home/search frontend
 
-## Getting Started
+A UCI student project-discovery board built with Next.js App Router, React,
+TypeScript, and Tailwind CSS v4. The homepage currently uses **fictional demo data**.
 
-First, run the development server:
+## Run locally
 
-```bash
+From this directory (`zoart-a-project`):
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Run `npm run lint`, `npx tsc --noEmit`, and
+`npm run build` to check the app. No environment variables are needed for the demo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Where things live
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app/page.tsx`: server-rendered homepage, hero, and navigation.
+- `src/components/ProjectBrowser.tsx`: client boundary for search/tag state.
+- `src/components/`: reusable Navbar, SearchBar, TagFilter, TagBadge,
+  ProjectCard, and ProjectGrid.
+- `src/types/project.ts`: shared Project shape. `membersWanted` means total
+  desired team size; a team at or above that number displays “Team full”.
+- `src/lib/projects.ts`: fictional listings and the asynchronous `getProjects()`
+  data boundary. Replace its implementation when connecting the database.
+- `src/lib/filter-projects.ts`: pure search/filter function, independent of React.
+- `src/app/globals.css`: theme, focus styles, and decorative hero artwork.
 
-## Learn More
+## How the data flows
 
-To learn more about Next.js, take a look at the following resources:
+The server page calls `getProjects()` and passes the results to ProjectBrowser
+through **props** (component inputs). ProjectBrowser stores the search text and
+selected tags in React **state**; typing or clicking a tag updates that state and
+renders the matching cards immediately. SearchBar and TagFilter receive values
+and callbacks as props so they do not need their own copies of the state.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`filterProjects()` uses `.filter()` to create a new array containing only matching
+projects. Text search ignores case and outer whitespace and checks title,
+description, author, and tags. A project must contain **every selected tag** as
+well as match the search text. Clear filters resets both controls. Available tags
+come from the project data, so a new category automatically gets a filter.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Teammate integration
 
-## Deploy on Vercel
+- Implement `/projects/new` and `/projects/[id]` separately. Navigation and cards
+  already link to those URLs; they currently return 404 until those routes exist.
+- Replace `getProjects()` with server-side Supabase access and map the real schema
+  into `Project` in a dedicated adapter. No backend routes or database schema are
+  assumed here. Keep service-role credentials on the server.
+- Cards do not render contact information. Before exposing real data, return only
+  public browse fields to the client; retrieve private contact details separately
+  on the detail route with appropriate access checks. Demo contact fields are empty.
+- Authentication, project creation, and detail-page behavior are outside this pass.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Manual checks
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Desktop: three columns; medium screens (768px+): two; mobile: one.
+- Search `MAYA`, `coffee`, or `hardware`; verify title/description/author/tag matches.
+- Select Web Dev and Sustainability: only Second Serving remains. Add Music:
+  the empty state appears. Reset restores all nine projects.
+- Search `pixel` while Design is selected: Tiny Tides remains.
+- Open Lab shows “Team full”; other cards show available places and current/total.
+- Use Tab, Enter, and Space to navigate, activate links, and toggle tag buttons.
+  Focus is visible, tag selection is announced, and result counts are live.
