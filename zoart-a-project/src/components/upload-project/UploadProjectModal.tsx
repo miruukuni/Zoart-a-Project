@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { CreateProjectInput } from "@/types/project";
+import {supabase} from "../../../lib/client";
 
 export type UploadProjectModalProps = {
   open: boolean;
