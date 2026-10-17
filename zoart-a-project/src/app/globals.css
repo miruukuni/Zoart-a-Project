@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -10,6 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --bubblegum-pink: #F194B4;
+  --yellow-orange: #FFB100;
+  --coral-red: #CC404A;
+  --sea-teal: #00ADA5;
 }
 
 @media (prefers-color-scheme: dark) {
