@@ -1,6 +1,9 @@
 from typing import List
+import logging
+import time
 from google import genai
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 # Code for project json handling
@@ -13,15 +16,29 @@ from pydantic import BaseModel, Field
 
 class Tag(BaseModel):
     tag: str = Field(description="A tag in the given tag list.")
-    description: str = Field(description = "First, A short description of that tag, then how it matches the student's query. Limit character count to 150")
+    description: str = Field(description = "Short description of tag, then how it matches query. 150 character limit")
     match_percent: int = Field(description = "How much the student query matches that tag, in percent.")
 class TagsList(BaseModel):
     tags: List[Tag] = Field(description="A list of Tag objects")
 
 app = FastAPI()
+origins = [
+     "https://localhost:3000",
+     "http://localhost:3000",
+     "http://127.0.0.1:8000",
+]
+app.add_middleware(
+     CORSMiddleware,
+     allow_origins=[
+        "https://localhost:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+     allow_credentials=True,
+     allow_methods =["*"],
+     allow_headers =["*"],
+)
 load_dotenv()
-
-api_key = os.getenv("API_KEY")
 
 tags = [
     "Psychology",
@@ -87,27 +104,49 @@ tags = [
 ]
 
 percent = 50
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @app.post("/api/gemini_search")
-def call_gemini(user_query: str):
-    print("Processing Gemini...")
-    client = genai.Client(api_key=api_key)
+def call_gemini(user_query: str= Body(embed=True)):
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    print("Processing Gemini...\n")
+    start = time.time()
+    try:
+        interaction = client.interactions.create(
+            model="gemini-3.8-flash",
+            input=[
+                {
+                    "type": "text",
+                    "text": (
+                        "Recommend relevant project tags for a student. "
+                        f"Available tags: {tags}. "
+                        f"Student input: {user_query}. "
+                        f"Only return tags with match_percent >= {percent}."
+                    ),
+                }
+            ],
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": TagsList.model_json_schema(),
+            },
+        )
 
-    interaction = client.interactions.create(
-        model="gemini-3.8-flash",
-        input=[
-            {"type": "text", "text": "You are helping college students figure out what type of collaborative project fits them best."
-            "Given a student input on the type of the project that they are interested in, and a list of tags that are available, "
-            f"give the student a list of recommended tags from the tag list, where recommended is defined as tags with a match percent >= {percent}"},
-            {"type": "text", "text": f"Tags: {tags}"},
-            {"type": "text", "text": f"Student input: {user_query}"}
-        ],
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": TagsList.model_json_schema()
-        },
-    )
+        logger.info("Gemini responded in %.2f seconds", time.time() - start)
+        logger.info("Raw output: %s", interaction.output_text)
+
+        result = TagsList.model_validate_json(interaction.output_text)
+
+        logger.info("Finished processing")
+        return result
+
+    except Exception:
+        logger.exception(
+            "Gemini failed after %.2f seconds",
+            time.time() - start,
+        )
+        raise
     return TagsList.model_validate_json(interaction.output_text)
 
 if __name__ == "__main__":
