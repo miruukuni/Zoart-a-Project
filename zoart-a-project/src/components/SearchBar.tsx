@@ -25,29 +25,9 @@ export default function SearchBar({
   }
 
   return (
-    <div className="flex flex-row gap-[29vw] p-10">
+    <div className="flex flex-row  gap-[29vw] p-10 justify-self-end">
 
-    <form
-      role="search"
-      onSubmit={handleSubmit}
-      className={`flex h-14 w-[60vw] overflow-hidden rounded-full border-[3px] border-black bg-white shadow-[8px_8px_0_#000] ${className}`}
-    >
-      <button
-        type="submit"
-        aria-label="Search"
-        className="grid w-[87px] shrink-0 place-items-center border-r-[3px] border-black bg-[#f291b4]"
-      >
-        <Search className="h-8 w-8" strokeWidth={2.5} />
-      </button>
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent px-5 text-2xl outline-none placeholder:text-black"
-        />
-        </form>
-        <div className="flex flex-row gap-5">
+        <div className="flex flex-row gap-5 justify-self-end">
         <Link href="/search" className="grid h-[50px] w-[95px] cursor-pointer place-items-center border-[3px] border-black bg-[#00ADA5] shadow-[4px_4px_0_#000]" >    
             PROJECTS
         </Link>
