@@ -3,6 +3,8 @@
 import { supabase } from "../../lib/client";
 import { useState } from "react";
 import SearchBar from "@/components/SearchBar";
+import title from '../../assets/Title.svg';
+import intersect from '../../assets/Intersect.svg';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
 
@@ -47,6 +49,10 @@ export default function Home() {
         press me
       </button>
 
+      <div className="flex justify-end items-center ">
+        <img src={title.src} alt="Title" className="w-[35rem] h-[30rem]" />
+      </div>
+
       <button
         onClick={async () => {
           try {
@@ -59,6 +65,10 @@ export default function Home() {
       >
         Load majors
       </button>
+
+      <div>
+        <img src={intersect.src} alt="Intersect" className="absolute bottom-0 w-full " />
+      </div>
 
       <UploadProjectModal
         open={uploadOpen}
