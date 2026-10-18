@@ -7,8 +7,6 @@ import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
-import { Inter } from "next/font/google";
-const searchInter = Inter({ subsets: ["latin"], variable: "--font-search-inter" });
 
 async function fetchMajors() {
   const response = await fetch(
@@ -44,7 +42,7 @@ export default function Home() {
       <SearchBar setUploadOpen={setUploadOpen} />
 
       <div className="flex flex-row justify-between px-10">
-      <article className="flex w-2/3 min-w-0 max-w-full h-[25rem] flex-col overflow-hidden rounded-[2.5rem] border-[3px] border-[#111111] bg-white">
+      <article className="flex w-2/3 min-w-0 max-w-full h-[25rem] flex-col overflow-hidden rounded-[2.5rem] border-[3px] border-[#111111] bg-black">
         <header className="flex min-h-16 min-w-0 items-center border-b-[3px] border-[#111111] bg-[#00ADA5] px-3.5 py-3 sm:px-4">
           <h2 className="min-w-0 text-[32px] font-normal leading-tight [overflow-wrap:anywhere] lg:text-4xl">
             About
