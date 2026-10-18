@@ -40,7 +40,7 @@ async function fetchProjects() {
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
   return (
-    <div className="{searchInter.variable}>{/* card markup */}">
+    <div className="bg-[#FFEBC6]">
       <SearchBar setUploadOpen={setUploadOpen} />
 
       <div className="flex flex-row justify-between px-10">
