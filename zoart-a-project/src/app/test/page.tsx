@@ -90,6 +90,25 @@ export default function Home() {
       >
         Load majors
       </button>
+
+      <UploadProjectModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onSubmit={createProject}
+      />
+        
+      <button
+        onClick={async () => {
+          try {
+            const tags = await fetchGemini();
+            console.log("Tags:", tags);
+          } catch (error: unknown){
+            console.error(error)
+          }
+        }}  
+      >
+        Touch Me!
+      </button>
     </div>
 
     
