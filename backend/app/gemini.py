@@ -114,7 +114,7 @@ load_dotenv()
 def call_gemini(user_query: str= Body(embed=True)):
     tags = get_sets()
 
-    percent = 50
+    percent = 75
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
