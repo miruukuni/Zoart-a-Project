@@ -17,8 +17,8 @@ That's why we made Zoart-A-Project, to create a unified hub where UCI students c
 
 
 ## How to use (functionality)
-When first entering the website, the user will be greeted with some introductory information. On the top right corner, are the two buttons that are the main functionality of the site. 
-The left one brings the user to a page where they get to browse the projects available on the site. It has a search bar that takes in any input (since the input is fed into GeminiAPI) and filters out the projects via tags that don't relate well to what the user is looking for. 
-On the very top right, is the button that lets users make new posts for projects, taking in project titles, description, author's name, thematic tags, and obviously an area for contact information to let people connect with the poster.
+When first entering the website, the user will be greeted with some introductory information. On the top right corner, are the two buttons that are the main functionality of the site. \
+The left one brings the user to a page where they get to browse the projects available on the site. It has a search bar that takes in any input (since the input is fed into GeminiAPI) and filters out the projects via tags that don't relate well to what the user is looking for. \
+On the very top right, is the button that lets users make new posts for projects, taking in project titles, description, author's name, thematic tags, and obviously an area for contact information to let people connect with the poster.\
 
 
