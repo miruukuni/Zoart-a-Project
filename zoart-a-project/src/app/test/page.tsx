@@ -24,6 +24,37 @@ async function fetchMajors() {
   return result.data;
 }
 
+async function fetchGemini() {
+  const response = await fetch("http://localhost:8000/api/gemini_search", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({user_query:"I want to build an airplane that can read your mind"}),
+    }
+  );
+
+  console.log("1\n")
+  if (!response.ok) {
+    throw new Error("Couldn't load gemini");
+  }
+  console.log("2\n")
+  const result = await response.json();
+
+  console.log("2\n")
+  if (!result.ok) {
+    throw new Error("Couldn't load gemini");
+  }
+
+  return result.data;
+}
+interface Tag {
+  id: number;
+  name: string;
+  email: string;
+}
+
+
 async function fetchProjects() {
   const { data, error } = await supabase.from("projects").select();
   if (error) {
@@ -65,6 +96,21 @@ export default function Home() {
         onClose={() => setUploadOpen(false)}
         onSubmit={createProject}
       />
+        
+      <button
+        onClick={async () => {
+          try {
+            const tags = await fetchGemini();
+            console.log("Tags:", tags);
+          } catch (error: unknown){
+            console.error(error)
+          }
+        }}  
+      >
+        Touch Me!
+      </button>
     </div>
+
+    
   );
 }
