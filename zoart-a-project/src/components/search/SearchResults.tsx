@@ -11,9 +11,8 @@ import CategoryFilters from "./CategoryFilters";
 import ProjectGrid from "./ProjectGrid";
 import { createProject, fetchProjectsByTags } from "../../../lib/projects";
 
-const searchTags: string[] = [];
-
 export default function SearchResults({ query }: { query: string }) {
+  const [searchTags, setSearchTags] = useState<string[]>([]);
   const router = useRouter();
   const [navigating, startTransition] = useTransition();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -39,6 +38,9 @@ async function reload() {
 useEffect(() => {
   const controller = new AbortController();
 
+  setLoading(true);
+  setError(false);
+
   fetchProjectsByTags(searchTags, controller.signal)
     .then((data) => {
       if (!controller.signal.aborted) setProjects(data);
@@ -51,11 +53,18 @@ useEffect(() => {
     });
 
   return () => controller.abort();
-}, []);
+}, [searchTags]);
 
-  function search(value: string) {
-    startTransition(() => router.push(value ? `/search?q=${encodeURIComponent(value)}` : "/search", { scroll: false }));
-  }
+function search(value: string, tags: string[] = []) {
+  setSearchTags(tags);
+
+  startTransition(() =>
+    router.push(
+      value ? `/search?q=${encodeURIComponent(value)}` : "/search",
+      { scroll: false },
+    ),
+  );
+}
 
   async function upload(input: CreateProjectInput) {
     await createProject(input);

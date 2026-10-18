@@ -5,54 +5,64 @@ import { Search } from "lucide-react";
 
 export default function SearchBar({ query, onSearch }: {
   query: string;
-  onSearch: (value: string) => void;
+  onSearch: (value: string, tags: string[]) => void;
 }) {
   const [value, setValue] = useState(query);
   const [loading, setLoading] = useState(false);
+
 async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmedValue = value.trim();
-    setValue(trimmedValue)
-    if (!trimmedValue) return; // Prevent searching for empty spaces
+  event.preventDefault();
+  if (loading) return;
 
-    setLoading(true);
-    try {
-      // 2. Trigger the local onSearch logic (if still needed)
-      onSearch(trimmedValue);
+  const trimmedValue = value.trim();
 
-      // 3. Run and await the Gemini search function
-      const geminiData = await fetchGemini();
-      console.log("Gemini data fetched successfully:", geminiData);
-      
-      // Do something with geminiData here if needed (e.g., pass it to a parent state)
-
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Clearing the search restores all projects.
+  if (!trimmedValue) {
+    onSearch("", []);
+    return;
   }
-  async function fetchGemini() {
+
+  setLoading(true);
+
+  try {
+    const geminiData = await fetchGemini(trimmedValue);
+
+    const tagNames = [
+      ...new Set(
+        geminiData.map(({ tag }) => tag.trim()).filter(Boolean),
+      ),
+    ];
+
+    onSearch(trimmedValue, tagNames);
+  } catch (error) {
+    console.error("Search error:", error);
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+async function fetchGemini(
+  prompt: string,
+): Promise<{ tag: string; description: string; match_percent: number }[]> {
   const response = await fetch("http://localhost:8000/api/gemini_search", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({user_query: value}),
-    }
-  );
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_query: prompt }),
+  });
 
-  console.log("1\n")
   if (!response.ok) {
-    throw new Error("Couldn't load gemini");
+    throw new Error("Couldn't load Gemini");
   }
-  console.log(response)
+
   const result = await response.json();
 
-  console.log(result)
+  if (!Array.isArray(result.tags)) {
+    throw new Error("Invalid Gemini response");
+  }
 
   return result.tags;
-  }
+}
 
   return (
     <form role="search" onSubmit={submit} className="flex h-14 w-full min-w-0 max-w-[650px] flex-1 overflow-hidden rounded-full border-[3px] border-[#111111] bg-white shadow-[6px_6px_0_#111111] sm:h-[75px] sm:shadow-[10px_10px_0_#111111]">
