@@ -11,9 +11,9 @@ That's why we made Zoart-A-Project, to create a unified hub where UCI students c
 
 ## Tech Stack
 
-**Front end**: Next.js, React, Tailwind CSS, Typescript
-**Back end**: Python, FastAPI, GeminiAPI 
-**Database**: SupaBase
+**Front end**: Next.js, React, Tailwind CSS, Typescript\
+**Back end**: Python, FastAPI, GeminiAPI \
+**Database**: SupaBase\
 
 
 ## How to use (functionality)
