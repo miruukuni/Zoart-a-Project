@@ -42,7 +42,7 @@ export default function Home() {
       <SearchBar setUploadOpen={setUploadOpen} />
 
       <div className="flex flex-row justify-between px-10">
-      <article className="flex w-2/3 min-w-0 max-w-full h-[25rem] flex-col overflow-hidden rounded-[2.5rem] border-[3px] border-[#111111] bg-black">
+      <article className="flex w-2/3 min-w-0 max-w-full h-[25rem] flex-col overflow-hidden rounded-[2.5rem] border-[3px] border-[#111111] bg-white">
         <header className="flex min-h-16 min-w-0 items-center border-b-[3px] border-[#111111] bg-[#00ADA5] px-3.5 py-3 sm:px-4">
           <h2 className="min-w-0 text-[32px] font-normal leading-tight [overflow-wrap:anywhere] lg:text-4xl">
             About
