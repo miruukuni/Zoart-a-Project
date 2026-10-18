@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Search, Upload } from "lucide-react";
+import Link from "next/link";
 
 type SearchBarProps = {
   placeholder?: string;
@@ -46,13 +47,18 @@ export default function SearchBar({
         className="min-w-0 flex-1 bg-transparent px-5 text-2xl outline-none placeholder:text-black"
         />
         </form>
+        <div className="flex flex-row gap-5">
+        <Link href="/search" className="grid h-[50px] w-[95px] cursor-pointer place-items-center border-[3px] border-black bg-[#00ADA5] shadow-[4px_4px_0_#000]" >    
+            PROJECTS
+        </Link>
         <button 
             type="button"
             aria-label="Upload"
             onClick={() => setUploadOpen(true)}
             className="grid h-[50px] w-[50px] cursor-pointer place-items-center border-[3px] border-black bg-[#CC404A] shadow-[4px_4px_0_#000]" >
-        <Upload className="h-8 w-8" strokeWidth={2.5} />
-    </button>
+            <Upload className="h-8 w-8" strokeWidth={2.5} />
+        </button>
+    </div>
 </div>
   );
 }

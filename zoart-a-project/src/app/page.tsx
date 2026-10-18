@@ -7,6 +7,8 @@ import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
+import { Inter } from "next/font/google";
+const searchInter = Inter({ subsets: ["latin"], variable: "--font-search-inter" });
 
 async function fetchMajors() {
   const response = await fetch(
@@ -38,33 +40,38 @@ async function fetchProjects() {
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
   return (
-    <div>
+    <div className="{searchInter.variable}>{/* card markup */}">
       <SearchBar setUploadOpen={setUploadOpen} />
-      <button
-        onClick={async () => {
-          const projects = await fetchProjects();
-          console.log(projects);
-        }}
-      >
-        press me
-      </button>
 
+      <div className="flex flex-row justify-between px-10">
+      <article className="flex w-2/3 min-w-0 max-w-full h-[25rem] flex-col overflow-hidden rounded-[2.5rem] border-[3px] border-[#111111] bg-white">
+        <header className="flex min-h-16 min-w-0 items-center border-b-[3px] border-[#111111] bg-[#00ADA5] px-3.5 py-3 sm:px-4">
+          <h2 className="min-w-0 text-[32px] font-normal leading-tight [overflow-wrap:anywhere] lg:text-4xl">
+            About
+          </h2>
+        </header>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3 p-2.5 sm:gap-4 sm:p-3">
+          {/* Tags (optional, delete if you don't want them) */}
+          <ul className="flex min-w-0 flex-wrap gap-2 font-[family-name:var(--font-search-inter)]">
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#CC404A] px-2 py-1.5 text-xs font-bold leading-4">For Learning</li>
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#00ADA5] px-2 py-1.5 text-xs font-bold leading-4">For Connecting</li>
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#F194B4] px-2 py-1.5 text-xs font-bold leading-4">For You</li>
+          </ul>
+
+          {/* Orange section */}
+          <section className="min-w-0 rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4 lg:p-5">
+            <h3 className="mb-3 text-[28px] font-normal leading-tight sm:text-[32px]">Our Story</h3>
+            <p className="font-[family-name:var(--font-search-inter)] text-base leading-relaxed [overflow-wrap:anywhere]">
+            Zoart-A-Project is a platform that helps students discover projects that match their interests, skills, and goals. Students can explore project opportunities, join existing teams, or contribute their skills to new ideas. By making it easier to find meaningful projects, ProjectHub encourages collaboration, hands-on learning, and skill development beyond the classroom.
+            </p>
+          </section>
+        </div>
+      </article>
       <div className="flex justify-end items-center ">
         <img src={title.src} alt="Title" className="w-[35rem] h-[30rem]" />
       </div>
-
-      <button
-        onClick={async () => {
-          try {
-            const majors = await fetchMajors();
-            console.log("Majors:", majors);
-          } catch {
-            console.error("Failed to load majors");
-          }
-        }}
-      >
-        Load majors
-      </button>
+      </div>
 
       <div>
         <img src={intersect.src} alt="Intersect" className="absolute bottom-0 w-full " />
