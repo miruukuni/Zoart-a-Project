@@ -7,12 +7,14 @@ type SearchBarProps = {
   placeholder?: string;
   onSearch?: (query: string) => void;
   className?: string;
+  setUploadOpen: (open: boolean) => void; 
 };
 
 export default function SearchBar({
   placeholder = "Search",
   onSearch,
   className = "",
+  setUploadOpen,
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
 
@@ -47,7 +49,7 @@ export default function SearchBar({
         <button 
             type="button"
             aria-label="Upload"
-            onClick={() => console.log("clicked")}
+            onClick={() => setUploadOpen(true)}
             className="grid h-[50px] w-[50px] cursor-pointer place-items-center border-[3px] border-black bg-[#CC404A] shadow-[4px_4px_0_#000]" >
         <Upload className="h-8 w-8" strokeWidth={2.5} />
     </button>

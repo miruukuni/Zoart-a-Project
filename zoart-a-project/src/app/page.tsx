@@ -4,7 +4,6 @@ import { supabase } from "../../lib/client";
 import { useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
-import UploadProjectTrigger from "@/components/upload-project/UploadProjectTrigger";
 import { createProject } from "../../lib/projects";
 
 async function fetchMajors() {
@@ -37,9 +36,8 @@ async function fetchProjects() {
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
   return (
-
     <div>
-      <SearchBar />
+      <SearchBar setUploadOpen={setUploadOpen} />
       <button
         onClick={async () => {
           const projects = await fetchProjects();
@@ -61,7 +59,6 @@ export default function Home() {
       >
         Load majors
       </button>
-      <UploadProjectTrigger onClick={() => setUploadOpen(true)} />
 
       <UploadProjectModal
         open={uploadOpen}
