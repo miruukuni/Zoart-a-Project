@@ -1,0 +1,21 @@
+<svg width="1440" height="71" viewBox="0 0 1440 71" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<path d="M1701 71H-573V0H1701V71Z" fill="url(#pattern0_74_311)"/>
+<defs>
+<pattern id="pattern0_74_311" patternUnits="userSpaceOnUse" patternTransform="matrix(70 0 0 70 -573 -2)" preserveAspectRatio="none" viewBox="0 -4 140 140" width="1" height="1">
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-140 -280)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-70 -210)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(0 -280)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(70 -210)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-140 -140)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-70 -70)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(0 -140)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(70 -70)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-140 0)"/>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(-70 70)"/>
+<g id="pattern0_74_311_inner">
+<rect width="70" height="70" fill="black"/>
+<rect y="70" width="70" height="70" fill="#F194B4"/>
+</g>
+<use xlink:href="#pattern0_74_311_inner" transform="translate(70 70)"/>
+</pattern></defs>
+</svg>
