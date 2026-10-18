@@ -3,13 +3,15 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload } from "lucide-react";
-import { createProject, fetchProjects } from "../../../lib/projects";
 import type { CreateProjectInput, Project } from "@/types/project";
 import { filterProjects, type Category } from "@/lib/filter-projects";
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import SearchBar from "./SearchBar";
 import CategoryFilters from "./CategoryFilters";
 import ProjectGrid from "./ProjectGrid";
+import { createProject, fetchProjectsByTags } from "../../../lib/projects";
+
+const searchTags: string[] = [];
 
 export default function SearchResults({ query }: { query: string }) {
   const router = useRouter();
@@ -20,27 +22,36 @@ export default function SearchResults({ query }: { query: string }) {
   const [category, setCategory] = useState<Category>("All projects");
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  async function reload() {
-    setLoading(true);
-    setError(false);
-    try {
-      const data = await fetchProjects();
-      setProjects(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }
+async function reload() {
+  setLoading(true);
+  setError(false);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchProjects(controller.signal)
-      .then((data) => { if (!controller.signal.aborted) setProjects(data); })
-      .catch(() => { if (!controller.signal.aborted) setError(true); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, []);
+  try {
+    const data = await fetchProjectsByTags(searchTags);
+    setProjects(data);
+  } catch {
+    setError(true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  const controller = new AbortController();
+
+  fetchProjectsByTags(searchTags, controller.signal)
+    .then((data) => {
+      if (!controller.signal.aborted) setProjects(data);
+    })
+    .catch(() => {
+      if (!controller.signal.aborted) setError(true);
+    })
+    .finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+
+  return () => controller.abort();
+}, []);
 
   function search(value: string) {
     startTransition(() => router.push(value ? `/search?q=${encodeURIComponent(value)}` : "/search", { scroll: false }));
@@ -51,7 +62,7 @@ export default function SearchResults({ query }: { query: string }) {
     await reload();
   }
 
-  const visibleProjects = filterProjects(projects, query, category);
+  const visibleProjects = filterProjects(projects, "", category);
   return (
     <main className="mx-auto w-full min-w-0 max-w-screen-2xl px-4 py-8 sm:px-8 sm:py-12 lg:px-10 lg:py-14">
       <h1 className="sr-only">Find a project</h1>

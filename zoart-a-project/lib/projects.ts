@@ -30,3 +30,26 @@ export async function createProject(
     throw error;
   }
 }
+export async function fetchProjectsByTags(
+  tagNames: string[],
+  signal?: AbortSignal,
+): Promise<Project[]> {
+  const tags = [...new Set(tagNames.map(tag => tag.trim()).filter(Boolean))];
+
+  if (!tags.length) return fetchProjects(signal);
+
+  const request = supabase
+    .from("projects")
+    .select("id,title,author,description,contact_info,tags,status,created_at")
+    .overlaps("tags", tags)
+    .order("created_at", { ascending: false });
+
+  const timeout = AbortSignal.timeout(15000);
+  const { data, error } = await request.abortSignal(
+    signal ? AbortSignal.any([signal, timeout]) : timeout,
+  );
+
+  if (error) throw error;
+  return (data ?? []) as Project[];
+}
+
