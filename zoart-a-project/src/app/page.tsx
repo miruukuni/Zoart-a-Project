@@ -7,24 +7,26 @@ import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
+import { Inter } from "next/font/google";
+const searchInter = Inter({ subsets: ["latin"], variable: "--font-search-inter" });
 
-async function fetchMajors() {
-  const response = await fetch(
-    "https://anteaterapi.com/v2/rest/programs/majors",
-  );
+// async function fetchMajors() {
+//   const response = await fetch(
+//     "https://anteaterapi.com/v2/rest/programs/majors",
+//   );
 
-  if (!response.ok) {
-    throw new Error("Couldn't load majors");
-  }
+//   if (!response.ok) {
+//     throw new Error("Couldn't load majors");
+//   }
 
-  const result = await response.json();
+//   const result = await response.json();
 
-  if (!result.ok) {
-    throw new Error("Couldn't load majors");
-  }
+//   if (!result.ok) {
+//     throw new Error("Couldn't load majors");
+//   }
 
-  return result.data;
-}
+//   return result.data;
+// }
 
 async function fetchGemini() {
   const response = await fetch("http://localhost:8000/api/gemini_search", {
@@ -32,7 +34,7 @@ async function fetchGemini() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({user_query:"I want to build an airplane that can read your mind"}),
+      body: JSON.stringify({user_query:"How many days to travel to mars"}),
     }
   );
 
@@ -40,12 +42,12 @@ async function fetchGemini() {
   if (!response.ok) {
     throw new Error("Couldn't load gemini");
   }
-  console.log("2\n")
+  console.log(response)
   const result = await response.json();
 
-  console.log("2\n")
+  console.log(result)
   if (!result.ok) {
-    throw new Error("Couldn't load gemini");
+    throw new Error("Couldn't load gemini 2");
   }
 
   return result.data;

@@ -8,10 +8,50 @@ export default function SearchBar({ query, onSearch }: {
   onSearch: (value: string) => void;
 }) {
   const [value, setValue] = useState(query);
-
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [loading, setLoading] = useState(false);
+async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSearch(value.trim());
+    const trimmedValue = value.trim();
+    setValue(trimmedValue)
+    if (!trimmedValue) return; // Prevent searching for empty spaces
+
+    setLoading(true);
+    try {
+      // 2. Trigger the local onSearch logic (if still needed)
+      onSearch(trimmedValue);
+
+      // 3. Run and await the Gemini search function
+      const geminiData = await fetchGemini();
+      console.log("Gemini data fetched successfully:", geminiData);
+      
+      // Do something with geminiData here if needed (e.g., pass it to a parent state)
+
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function fetchGemini() {
+  const response = await fetch("http://localhost:8000/api/gemini_search", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({user_query: value}),
+    }
+  );
+
+  console.log("1\n")
+  if (!response.ok) {
+    throw new Error("Couldn't load gemini");
+  }
+  console.log(response)
+  const result = await response.json();
+
+  console.log(result)
+
+  return result.tags;
   }
 
   return (
