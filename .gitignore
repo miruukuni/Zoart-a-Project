@@ -1,0 +1,26 @@
+﻿# Local environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies and Python caches
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Build and deployment output
+.next/
+out/
+build/
+coverage/
+.vercel/
+
+# Private key files
+*.pem
+*.key
+
+# Local OS files
+.DS_Store
+Thumbs.db
