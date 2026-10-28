@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Heart, Power } from "lucide-react";
 import type { Project } from "@/types/project";
-import { majorLabel } from "@/lib/majors";
+import { majorLabel, projectMajors } from "@/lib/majors";
 import type { LikeState } from "@/lib/project-likes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { setProjectStatus } from "../../../lib/projects";
@@ -24,8 +24,7 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
   const owned = !!user && project.owner_id === user.id;
   const tags = project.tags ?? [];
   const applyUrl = applicationUrl(project.application_url);
-  const majors = project.project_majors?.flatMap(link => link.major ? [link.major] : []) ?? [];
-  const displayedMajors = majors.length ? majors : project.major ? [project.major] : [];
+  const displayedMajors = projectMajors(project);
   const likeLabel = likesReady && like ? `${like.count} ${like.count === 1 ? "like" : "likes"}` : user ? "Likes unavailable" : "Sign in to like this project";
   async function changeStatus() {
     if (!owned || changing.current) return;
@@ -53,14 +52,14 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
         <h2 title={project.title ?? undefined} className="line-clamp-2 min-w-0 text-2xl font-normal leading-7 [overflow-wrap:anywhere]">{project.title || "Untitled project"}</h2>
         <div className="flex items-center justify-between gap-2"><span className={`rounded border border-[#111111] px-1.5 text-[10px] font-bold ${offline ? "bg-white text-[#333]" : "bg-[#FFEBC6] text-[#111111]"}`}>{offline ? "Offline" : "Active"}</span><ProjectAge createdAt={project.created_at} /></div>
       </header>
-      <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[4.5rem_3.5rem_minmax(0,1fr)_6.5rem] gap-3 p-3">
-        <div role="region" aria-label="Project majors" tabIndex={0} className="min-h-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
+        <div role="region" aria-label="Project majors" tabIndex={0} className="max-h-[4.5rem] min-h-0 shrink-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
           {displayedMajors.length ? <ul aria-label="UCI majors" className="flex flex-wrap content-start gap-1.5">{displayedMajors.map(major => <li key={major.id} className="max-w-full rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1 font-[family-name:var(--font-search-inter)] text-xs font-bold [overflow-wrap:anywhere]">{majorLabel(major)}</li>)}</ul> : <p className="py-1 text-xs text-[#555]">Open to all majors</p>}
         </div>
-        <div role="region" aria-label="Project tags" tabIndex={0} className="min-h-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+        {tags.length > 0 && <div role="region" aria-label="Project tags" tabIndex={0} className="max-h-14 min-h-0 shrink-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
           <ul className="flex flex-wrap content-start gap-1.5 font-[family-name:var(--font-search-inter)]">{tags.map((tag,index) => <li key={`${tag}-${index}`} className={`max-w-full rounded-md border-2 border-[#111111] px-2 py-1 text-xs font-bold leading-4 [overflow-wrap:anywhere] ${chipColors[index % chipColors.length]}`}>{tag}</li>)}</ul>
-        </div>
-        <section className="flex min-h-0 min-w-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4">
+        </div>}
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4">
           <h3 className="mb-2 shrink-0 text-2xl leading-tight">About</h3>
           {(likeError || statusError) && <p role="alert" className="mb-2 max-h-14 shrink-0 overflow-auto text-xs font-bold text-[#8a1420]">{likeError || statusError}</p>}
           <div role="region" aria-label="Project description" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-sm pr-1 font-[family-name:var(--font-search-inter)] [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#111111]">
@@ -68,7 +67,7 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
             <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{project.description || "No description provided."}</p>
           </div>
         </section>
-        <section className="flex min-h-0 min-w-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
+        <section className="flex h-[6.5rem] min-h-0 min-w-0 shrink-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
           <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-2xl leading-tight">Contact</h3>
             {applyUrl && <a href={applyUrl} target="_blank" rel="noopener noreferrer" aria-label={`Apply to ${project.title || "project"} (opens in a new tab)`} className="shrink-0 rounded-lg border-2 border-[#111111] bg-[#F194B4] px-3 py-1 font-[family-name:var(--font-search-inter)] text-sm font-bold shadow-[2px_2px_0_#111111] hover:bg-white focus-visible:outline-4 focus-visible:outline-offset-2">Apply ↗</a>}

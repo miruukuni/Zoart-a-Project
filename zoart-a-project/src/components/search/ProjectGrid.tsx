@@ -6,13 +6,15 @@ import ProjectCard from "./ProjectCard";
 import { loadLikes, saveLike, type LikeState } from "@/lib/project-likes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { sortProjects, type ProjectSort } from "@/lib/project-order";
 
-export default function ProjectGrid({ projects, onStatusChange }: { projects: Project[]; onStatusChange: (id: string, status: "active" | "offline") => void }) {
+export default function ProjectGrid({ projects, sort = "most-liked", onStatusChange }: { projects: Project[]; sort?: ProjectSort; onStatusChange: (id: string, status: "active" | "offline") => void }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const ids = projects.map(project => String(project.id)).join(",");
+  // Display order can change after a like; the request key depends only on IDs.
+  const ids = projects.map(project => String(project.id)).sort().join(",");
   const identity = user?.id ?? "guest";
   const currentIdentity = useRef(identity);
   useEffect(() => { currentIdentity.current = identity; }, [identity]);
@@ -64,12 +66,16 @@ export default function ProjectGrid({ projects, onStatusChange }: { projects: Pr
     }
   }
 
+  const popularitySort = sort === "most-liked" || sort === "least-liked";
+  const likesReady = loaded === loadedKey && !error;
+  const loadingPopularity = popularitySort && !likesReady && !error;
+  const orderedProjects = sortProjects(projects, error && popularitySort ? "newest" : sort, likes);
   return (
     <>
-      {error && <p role="status" className="mb-6 text-sm">{error} <button type="button" className="font-bold underline" onClick={() => setAttempt(value => value + 1)}>Retry</button></p>}
-      <div className="project-grid w-full min-w-0 pt-3">
-        {projects.map(project => <ProjectCard key={`${identity}-${project.id}`} project={project} like={loaded === loadedKey ? likes[String(project.id)] : undefined} likesReady={loaded === loadedKey && !error} liking={pendingIds.includes(`${identity}:${project.id}`)} likeError={likeErrors[`${identity}:${project.id}`]} onLike={() => void toggle(String(project.id))} onStatusChange={onStatusChange} />)}
-      </div>
+      {error && <p role="status" className="mb-6 text-sm">{error}{popularitySort && " Showing newest projects until popularity is available."} <button type="button" className="font-bold underline" onClick={() => setAttempt(value => value + 1)}>Retry</button></p>}
+      {loadingPopularity ? <p role="status" className="rounded-3xl border-[3px] border-[#111111] bg-white p-6">Loading project popularity…</p> : <div className="project-grid w-full min-w-0 pt-3">
+        {orderedProjects.map(project => <ProjectCard key={`${identity}-${project.id}`} project={project} like={loaded === loadedKey ? likes[String(project.id)] : undefined} likesReady={likesReady} liking={pendingIds.includes(`${identity}:${project.id}`)} likeError={likeErrors[`${identity}:${project.id}`]} onLike={() => void toggle(String(project.id))} onStatusChange={onStatusChange} />)}
+      </div>}
     </>
   );
 }

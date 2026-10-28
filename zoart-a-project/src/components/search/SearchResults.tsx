@@ -16,10 +16,15 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import AccountButton from "@/components/auth/AccountButton";
 import ProjectViewFilter, { type ProjectView } from "./ProjectViewFilter";
 import { useSearchParams } from "next/navigation";
+import ProjectBrowseControls from "./ProjectBrowseControls";
+import { projectSort } from "@/lib/project-order";
+import { majorLabel, projectHasMajor, projectMajors, type ProjectMajor } from "@/lib/majors";
 
 export default function SearchResults({ query }: { query: string }) {
   const { user, loading: authLoading } = useAuth();
   const params = useSearchParams();
+  const sort = projectSort(params.get("sort"));
+  const major = params.get("major") ?? "";
   const view: ProjectView = params.get("view") === "mine" ? "mine" : params.get("view") === "offline" ? "offline" : "active";
   const searchTags = useRef<string[]>([]);
   const router = useRouter();
@@ -30,6 +35,18 @@ export default function SearchResults({ query }: { query: string }) {
   const [attempt, setAttempt] = useState(0);
   const [category, setCategory] = useState<Category>("All projects");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [majorCatalog, setMajorCatalog] = useState<ProjectMajor[]>([]);
+  const majorOptions = [...new Map([...majorCatalog, ...projects.flatMap(projectMajors)].map(major => [major.id, major])).values()]
+    .sort((a, b) => majorLabel(a).localeCompare(majorLabel(b)));
+  const selectedMajor = majorOptions.find(option => option.id === major);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api<{ majors: ProjectMajor[] }>("/api/majors", { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) })
+      .then(result => { if (!controller.signal.aborted) setMajorCatalog(result.majors); })
+      .catch(() => { /* Majors already attached to loaded projects remain selectable. */ });
+    return () => controller.abort();
+  }, []);
 
 async function reload() {
   setLoading(true);
@@ -88,9 +105,11 @@ function search(value: string) {
   setLoading(true);
   setError("");
 
+  const next = new URLSearchParams(params.toString());
+  if (value) next.set("q", value); else next.delete("q");
   startTransition(() =>
     router.push(
-      `/search?${new URLSearchParams({ ...(value ? { q: value } : {}), ...(view !== "active" ? { view } : {}) })}`,
+      `/search${next.size ? `?${next}` : ""}`,
       { scroll: false },
     ),
   );
@@ -101,10 +120,14 @@ function search(value: string) {
     await reload();
   }
 
-  const visibleProjects = filterProjects(projects, "", category).filter(project => view === "mine" ? !!user && project.owner_id === user.id : view === "active" ? project.status === "active" : project.status !== "active");
-  function changeView(value: ProjectView) {
+  const visibleProjects = filterProjects(projects, "", category)
+    .filter(project => view === "mine" ? !!user && project.owner_id === user.id : view === "active" ? project.status === "active" : project.status !== "active")
+    .filter(project => projectHasMajor(project, major));
+  function updateBrowse(updates: Record<string, string | null>) {
     const next = new URLSearchParams(params.toString());
-    if (value === "active") next.delete("view"); else next.set("view", value);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) next.set(key, value); else next.delete(key);
+    }
     router.push(`/search${next.size ? `?${next}` : ""}`, { scroll: false });
   }
   return (
@@ -119,7 +142,10 @@ function search(value: string) {
         </button>
       </div>
       <div className="mt-8 sm:mt-10"><CategoryFilters selected={category} onSelect={setCategory} /></div>
-      <div className="mt-5"><ProjectViewFilter value={view} onChange={changeView} /></div>
+      <div className="mt-5 flex min-w-0 flex-wrap items-end justify-between gap-5">
+        <ProjectViewFilter value={view} onChange={value => updateBrowse({ view: value === "active" ? null : value })} />
+        <ProjectBrowseControls sort={sort} major={major} majors={majorOptions} onSortChange={value => updateBrowse({ sort: value === "most-liked" ? null : value })} onMajorChange={value => updateBrowse({ major: value })} />
+      </div>
       <section aria-label="Search results" aria-busy={loading || navigating} className="mt-8 min-w-0 sm:mt-10">
         {loading || (view === "mine" && authLoading) ? <p role="status" className="rounded-3xl border-4 border-[#111111] bg-white p-8 text-2xl">Think faster Gemini…</p> : view === "mine" && !user ? <div className="rounded-3xl border-4 border-[#111111] bg-white p-8"><h2 className="text-3xl">Your projects live here.</h2><p className="mt-3">Sign in to see and manage the projects you created.</p><Link href="/sign-in?next=%2Fsearch%3Fview%3Dmine" className="mt-5 inline-block rounded-xl border-[3px] border-[#111111] bg-[#F194B4] px-5 py-3 font-bold">Sign in</Link></div> : error ? (
           <div role="alert" className="rounded-3xl border-4 border-[#111111] bg-white p-8">
@@ -128,12 +154,12 @@ function search(value: string) {
             <button type="button" onClick={() => { setLoading(true); setError(""); setAttempt(previous => previous + 1); }} className="mt-5 rounded-xl border-4 border-[#111111] bg-[#F194B4] px-5 py-3 font-bold focus-visible:outline-4 focus-visible:outline-offset-4">Try again</button>
           </div>
         ) : <>
-          <p role="status" className="mb-5 min-w-0 font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere]">{visibleProjects.length} {visibleProjects.length === 1 ? "project" : "projects"}{query && <> matching “<span>{query}</span>”</>}{category !== "All projects" && ` in ${category}`}</p>
-          {visibleProjects.length ? <ProjectGrid projects={visibleProjects} onStatusChange={(id, status) => setProjects(previous => previous.map(project => String(project.id) === id ? { ...project, status } : project))} /> : (
+          <p role="status" className="mb-5 min-w-0 font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere]">{visibleProjects.length} {visibleProjects.length === 1 ? "project" : "projects"}{query && <> matching “<span>{query}</span>”</>}{category !== "All projects" && ` in ${category}`}{major && ` for ${selectedMajor ? majorLabel(selectedMajor) : "the selected major"}`}</p>
+          {visibleProjects.length ? <ProjectGrid projects={visibleProjects} sort={sort} onStatusChange={(id, status) => setProjects(previous => previous.map(project => String(project.id) === id ? { ...project, status } : project))} /> : (
             <div className="rounded-3xl border-4 border-[#111111] bg-white p-8">
               <h2 className="text-3xl">No projects found</h2>
-              <p className="mt-3 text-lg">Try another search or category, or upload a project of your own.</p>
-              {(query || category !== "All projects") && <button type="button" onClick={() => { setCategory("All projects"); search(""); }} className="mt-5 rounded-xl border-4 border-[#111111] bg-[#00ADA5] px-5 py-3 font-bold focus-visible:outline-4 focus-visible:outline-offset-4">Show all projects</button>}
+              <p className="mt-3 text-lg">Try another search, category, or major, or upload a project of your own.</p>
+              {(query || category !== "All projects" || major) && <button type="button" onClick={() => { setCategory("All projects"); updateBrowse({ q: null, major: null }); }} className="mt-5 rounded-xl border-4 border-[#111111] bg-[#00ADA5] px-5 py-3 font-bold focus-visible:outline-4 focus-visible:outline-offset-4">Clear search and filters</button>}
             </div>
           )}
         </>}

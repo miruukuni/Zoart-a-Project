@@ -19,8 +19,16 @@ const ZOARTS = [
   { top: "0%",  left: "62%", bg: "#8368FF", rot: -4,  shape: "rounded-full", delay: 0.8 },
 ];
 
+const TODOS = [
+  { label: "Job 1", bg: "#8DB4FF" },
+  { label: "Job 2", bg: "#F194B4" },
+  { label: "Job 3", bg: "#8368FF" },
+  { label: "Job 4", bg: "#00ADA5" },
+  { label: "Job 5", bg: "#FF676D" },
+];
+
 const SLIDE_SECONDS = 1.8;
-const ZOART_SOUND = "/sounds/auifilerandom.mp3";
+const ZOART_SOUND = "/audio/testinganother.mp3";
 
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -133,8 +141,8 @@ export default function Home() {
               <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#CC5A5C] px-2 py-1.5 text-xs font-bold leading-4">Build a Project</li>
               <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#00ADA5] px-2 py-1.5 text-xs font-bold leading-4">Make Connections</li>
               <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#8368FF] px-2 py-1.5 text-xs font-bold leading-4">Add things to your resume</li>
-              <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#F194B4] px-2 py-1.5 text-xs font-bold leading-4">Placeholder</li>
-              <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#FF676D] px-2 py-1.5 text-xs font-bold leading-4">Placeholder</li>
+              <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#F194B4] px-2 py-1.5 text-xs font-bold leading-4">Shamelessly claiming credits</li>
+              <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#FF676D] px-2 py-1.5 text-xs font-bold leading-4">Troy Ngo</li>
             </ul>
 
             <section className="min-w-0 rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4 lg:p-5">
@@ -145,6 +153,20 @@ export default function Home() {
                 find collaborators. Real projects, real teammates, real stuff to put on your
                 resume. No classroom required.
               </p>
+            </section>
+            <section className="min-w-0 rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4 lg:p-5">
+              <h3 className="mb-3 text-[28px] font-normal leading-tight sm:text-[32px]">Todo list:</h3>
+              <ul className="flex min-w-0 flex-wrap gap-2 font-[family-name:var(--font-search-inter)]">
+                {TODOS.map((t) => (
+                  <li
+                    key={t.label}
+                    className="max-w-full rounded-md border-2 border-[#111111] px-2 py-1.5 text-xs font-bold leading-4"
+                    style={{ backgroundColor: t.bg }}
+                  >
+                    {t.label}
+                  </li>
+                ))}
+              </ul>
             </section>
           </div>
         </article>
