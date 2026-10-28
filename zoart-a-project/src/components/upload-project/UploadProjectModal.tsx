@@ -4,8 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { CreateProjectInput } from "@/types/project";
 import { api } from "@/lib/api";
-import { canonicalTag, matchingTags, MAX_TAGS } from "@/lib/tags";
-import { majorLabel } from "@/lib/majors";
+import { canonicalTag, matchingTags, typoTag, MAX_TAGS } from "@/lib/tags";
+import MajorPicker, { type Major } from "./MajorPicker";
 
 
 export type UploadProjectModalProps = {
@@ -18,7 +18,6 @@ export type UploadProjectModalProps = {
 
 type Field = keyof CreateProjectInput;
 type Errors = Partial<Record<Field, string>>;
-type Major = { id: string; name: string; degree: string };
 const chipColors = [
   "bg-[var(--yellow-orange,#FFB100)]",
   "bg-[var(--bubblegum-pink,#F194B4)]",
@@ -53,7 +52,7 @@ function OpenUploadProjectModal({
     description: "",
     contact_info: "",
     tags: [],
-    major_id: null,
+    major_ids: [],
   });
   const [customTag, setCustomTag] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
@@ -80,7 +79,7 @@ function OpenUploadProjectModal({
     .map((tag) => ({ value: tag, label: tag }));
   if (
     tagQuery &&
-    !canonicalTag(tagQuery)
+    !canonicalTag(tagQuery) && !typoTag(tagQuery)
   ) {
     tagChoices.push({ value: tagQuery, label: `Find approved tag for “${tagQuery}”` });
   }
@@ -116,7 +115,7 @@ function OpenUploadProjectModal({
     return () => controller.abort();
   }, [majorAttempt]);
 
-  function update(field: Exclude<Field, "tags" | "major_id">, value: string) {
+  function update(field: Exclude<Field, "tags" | "major_ids">, value: string) {
     setValues((previous) => ({ ...previous, [field]: value }));
     if (value.trim())
       setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -129,7 +128,7 @@ function OpenUploadProjectModal({
       setErrors(previous => ({ ...previous, tags: `Choose up to ${MAX_TAGS} tags.` }));
       return;
     }
-    let tag = canonicalTag(value);
+    let tag = canonicalTag(value) ?? typoTag(value);
     if (!tag) {
       tagPending.current = true;
       setNormalizing(true);
@@ -168,7 +167,7 @@ function OpenUploadProjectModal({
       description: values.description.trim(),
       contact_info: values.contact_info.trim(),
       tags: [...values.tags],
-      major_id: values.major_id,
+      major_ids: values.major_ids,
     };
     const nextErrors: Errors = {};
     if (!input.title) nextErrors.title = "Enter a project title.";
@@ -461,7 +460,7 @@ function OpenUploadProjectModal({
                   />
                 </div>
                 <p id={`${id}-tag-help`} className="mt-1 text-xs">
-                  Choose up to 7 approved tags. Common abbreviations are matched automatically.
+                  Choose up to 7 approved tags. Abbreviations and clear typos are matched automatically.
                   Use Up and Down arrows to choose a suggestion, Enter to select
                   or match a tag, and Escape to close suggestions.
                 </p>
@@ -500,12 +499,8 @@ function OpenUploadProjectModal({
                 {error("tags")}
               </div>
               <div>
-                <label htmlFor={`${id}-major`} className="mb-1 block text-[13px] font-bold">UCI major (optional)</label>
-                <select id={`${id}-major`} name="major_id" value={values.major_id ?? ""} onChange={event => setValues(previous => ({ ...previous, major_id: event.target.value || null }))} className={inputClass} disabled={!majors.length}>
-                  <option value="">Any major / no preference</option>
-                  {majors.map(major => <option key={major.id} value={major.id}>{majorLabel(major)}</option>)}
-                </select>
-                <p className="mt-1 text-xs">Separate from your seven project tags. Data from <a href="https://icssc.link/about-anteaterapi" target="_blank" rel="noreferrer" className="underline">Anteater API</a>.</p>
+                <MajorPicker majors={majors} selected={values.major_ids ?? []} onChange={major_ids => setValues(previous => ({ ...previous, major_ids }))} />
+                <p className="mt-1 text-xs">Add multiple majors, or leave empty for any major. Separate from your seven project tags. Data from <a href="https://icssc.link/about-anteaterapi" target="_blank" rel="noreferrer" className="underline">Anteater API</a>.</p>
                 {majorStatus && <p role="status" className="mt-1 text-xs">{majorStatus} {majorStatus.includes("unavailable") && <button type="button" className="underline" onClick={() => { setMajorStatus("Loading UCI majors…"); setMajorAttempt(previous => previous + 1); }}>Retry</button>}</p>}
               </div>
               <div>

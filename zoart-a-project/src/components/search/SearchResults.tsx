@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CloudUpload } from "lucide-react";
+import { CloudUpload, House } from "lucide-react";
+import Link from "next/link";
 import type { CreateProjectInput, Project } from "@/types/project";
 import { filterProjects, type Category } from "@/lib/filter-projects";
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
@@ -94,16 +95,17 @@ function search(value: string) {
 
   const visibleProjects = filterProjects(projects, "", category);
   return (
-    <main className="mx-auto w-full min-w-0 max-w-screen-2xl px-4 py-8 sm:px-8 sm:py-12 lg:px-10 lg:py-14">
+    <main className="site-shell min-w-0 py-6 sm:py-8">
       <h1 className="sr-only">Find a project</h1>
-      <div className="flex min-w-0 items-start justify-between gap-5 sm:gap-10">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 sm:gap-5">
         <SearchBar key={`${query}-${attempt}`} query={query} loading={loading || navigating} onSearch={search} />
-        <button type="button" aria-label="Upload a project" onClick={() => setUploadOpen(true)} className="grid size-12 shrink-0 place-items-center border-[3px] border-[#111111] bg-[#CC404A] shadow-[4px_4px_0_#111111] transition-colors hover:bg-[#F194B4] focus-visible:outline-4 focus-visible:outline-offset-4 sm:h-16 sm:w-20">
-          <CloudUpload aria-hidden="true" className="size-7 sm:size-10" strokeWidth={1.8} />
+        <Link href="/" aria-label="Return home" className="grid size-12 place-items-center rounded-xl border-[3px] border-[#111111] bg-[#111111] text-white shadow-[4px_4px_0_#F194B4] focus-visible:outline-4 focus-visible:outline-offset-4 sm:size-14"><House className="size-6 sm:size-7" aria-hidden="true" /></Link>
+        <button type="button" aria-label="Upload a project" onClick={() => setUploadOpen(true)} className="grid size-12 shrink-0 place-items-center border-[3px] border-[#111111] bg-[#CC404A] shadow-[4px_4px_0_#111111] transition-colors hover:bg-[#F194B4] focus-visible:outline-4 focus-visible:outline-offset-4 sm:size-14">
+          <CloudUpload aria-hidden="true" className="size-7 sm:size-8" strokeWidth={1.8} />
         </button>
       </div>
-      <div className="mt-12 sm:mt-14 lg:mt-16"><CategoryFilters selected={category} onSelect={setCategory} /></div>
-      <section aria-label="Search results" aria-busy={loading || navigating} className="mt-12 min-w-0 sm:mt-16">
+      <div className="mt-8 sm:mt-10"><CategoryFilters selected={category} onSelect={setCategory} /></div>
+      <section aria-label="Search results" aria-busy={loading || navigating} className="mt-8 min-w-0 sm:mt-10">
         {loading ? <p role="status" className="rounded-3xl border-4 border-[#111111] bg-white p-8 text-2xl">Think faster Gemini…</p> : error ? (
           <div role="alert" className="rounded-3xl border-4 border-[#111111] bg-white p-8">
             <h2 className="text-3xl">Couldn’t load projects</h2>

@@ -11,20 +11,17 @@ export default function SearchBar({
   setUploadOpen,
 }: SearchBarProps) {
   return (
-    <div className="flex flex-row  gap-[29vw] p-10 justify-self-end">
-
-        <div className="flex flex-row gap-5 justify-self-end">
-        <Link href="/search" className="grid h-[50px] w-[95px] cursor-pointer place-items-center border-[3px] border-black bg-[#00ADA5] shadow-[4px_4px_0_#000]" >    
+    <nav aria-label="Main navigation" className="site-shell flex items-center justify-end gap-4 py-5 sm:py-7">
+        <Link href="/search" className="grid min-h-12 place-items-center border-[3px] border-black bg-[#00ADA5] px-4 text-sm font-bold shadow-[4px_4px_0_#000] focus-visible:outline-4 focus-visible:outline-offset-4" >
             PROJECTS
         </Link>
         <button 
             type="button"
             aria-label="Upload"
             onClick={() => setUploadOpen(true)}
-            className="grid h-[50px] w-[50px] cursor-pointer place-items-center border-[3px] border-black bg-[#CC404A] shadow-[4px_4px_0_#000]" >
+            className="grid size-12 cursor-pointer place-items-center border-[3px] border-black bg-[#CC404A] shadow-[4px_4px_0_#000] focus-visible:outline-4 focus-visible:outline-offset-4" >
             <Upload className="h-8 w-8" strokeWidth={2.5} />
         </button>
-    </div>
-</div>
+    </nav>
   );
 }

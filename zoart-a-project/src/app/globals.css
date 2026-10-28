@@ -14,14 +14,27 @@
   --sea-teal: #00ADA5;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  min-height: 100%;
+  background: #FFEBC6;
+  color-scheme: light;
 }
 
 body {
+  min-height: 100dvh;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
+}
+
+.site-shell {
+  width: 100%;
+  padding-inline: clamp(1rem, 3vw, 4rem);
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 23rem), 1fr));
+  align-items: stretch;
+  gap: clamp(1.25rem, 2.5vw, 2.5rem);
 }

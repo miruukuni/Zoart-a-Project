@@ -1,6 +1,7 @@
 """Local API. Run one worker so the Gemini gate is shared by all requests."""
 from contextlib import contextmanager
 from functools import lru_cache
+import hashlib
 import json
 import logging
 import os
@@ -8,6 +9,8 @@ from pathlib import Path
 import re
 from threading import Lock
 import time
+from typing import Annotated
+from uuid import UUID
 
 import httpx
 from dotenv import load_dotenv
@@ -25,11 +28,34 @@ MAX_TAGS = 7
 
 
 def tag_key(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", value.lower())
+    return re.sub(r"[^a-z0-9+#]", "", value.lower())
 
 
 ALIASES = {tag_key(alias): entry["label"] for entry in CATALOG for alias in [entry["label"], *entry["aliases"]]}
 LABELS = {entry["label"] for entry in CATALOG}
+
+
+def typo_tag(value: str) -> str | None:
+    search = tag_key(value)
+    if not 5 <= len(search) <= 80:
+        return None
+    scores = {}
+    for alias, label in ALIASES.items():
+        if len(alias) < 5 or abs(len(alias) - len(search)) > 2:
+            continue
+        grid = [[j if i == 0 else i if j == 0 else 0 for j in range(len(alias) + 1)] for i in range(len(search) + 1)]
+        for i in range(1, len(search) + 1):
+            for j in range(1, len(alias) + 1):
+                grid[i][j] = min(grid[i - 1][j] + 1, grid[i][j - 1] + 1, grid[i - 1][j - 1] + int(search[i - 1] != alias[j - 1]))
+                if i > 1 and j > 1 and search[i - 1] == alias[j - 2] and search[i - 2] == alias[j - 1]:
+                    grid[i][j] = min(grid[i][j], grid[i - 2][j - 2] + 1)
+        edits = grid[-1][-1]
+        if edits <= 2:
+            scores[label] = max(scores.get(label, 0), 1 - edits / max(len(alias), len(search)))
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    if ranked and ranked[0][1] >= 0.82 and ranked[0][1] - (ranked[1][1] if len(ranked) > 1 else 0) >= 0.07:
+        return ranked[0][0]
+    return None
 
 
 class Query(BaseModel):
@@ -68,6 +94,12 @@ class ProjectInput(BaseModel):
     contact_info: str = Field(min_length=1, max_length=300)
     tags: list[str] = Field(min_length=1, max_length=MAX_TAGS)
     major_id: str | None = Field(default=None, max_length=100)
+    major_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(default_factory=list, max_length=100)
+
+    @field_validator("major_ids")
+    @classmethod
+    def unique_majors(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(values))
 
     @field_validator("title", "author", "description", "contact_info")
     @classmethod
@@ -178,7 +210,7 @@ def normalize_tag(body: NormalizeInput, request: Request):
     if not body.tag.strip():
         raise HTTPException(422, "Enter a tag.")
     with gate.enter(request.client.host if request.client else "unknown"):
-        known = ALIASES.get(tag_key(body.tag))
+        known = ALIASES.get(tag_key(body.tag)) or typo_tag(body.tag)
         if known:
             return NormalizedTag(tag=known)
         result = ask_gemini(
@@ -226,18 +258,81 @@ def majors():
 
 @app.post("/api/projects", status_code=201)
 def create_project(body: ProjectInput):
-    major = None
-    if body.major_id:
-        major = next((item for item in get_majors() if item["id"] == body.major_id), None)
-        if major is None:
-            raise HTTPException(422, "Choose a major from the UCI list.")
+    selected_ids = body.major_ids or ([body.major_id] if body.major_id else [])
+    catalog = {item["id"]: item for item in get_majors()} if selected_ids else {}
+    if any(major_id not in catalog for major_id in selected_ids):
+        raise HTTPException(422, "Choose majors from the UCI list.")
     try:
-        if major:
-            database().table("uci_majors").upsert(major).execute()
-        database().table("projects").insert(body.model_dump()).execute()
+        if selected_ids:
+            database().table("uci_majors").upsert([catalog[major_id] for major_id in selected_ids]).execute()
+        database().rpc("create_project_with_majors", {
+            "p_project": body.model_dump(exclude={"major_ids", "major_id"}),
+            "p_major_ids": selected_ids,
+        }).execute()
     except HTTPException:
         raise
     except Exception as error:
         logger.exception("Project creation failed")
-        raise HTTPException(503, "Could not save your project. Check the database setup and try again.") from error
+        raise HTTPException(503, "Could not save your project. Make sure the latest database migration is applied, then try again.") from error
     return {"ok": True}
+
+
+class LikesQuery(BaseModel):
+    project_ids: list[UUID] = Field(max_length=200)
+    visitor_id: UUID
+
+
+class LikeInput(BaseModel):
+    visitor_id: UUID
+    liked: bool
+
+
+def visitor_hash(visitor_id: UUID) -> str:
+    return hashlib.sha256(str(visitor_id).encode()).hexdigest()
+
+
+@app.post("/api/project_likes")
+def project_likes(body: LikesQuery):
+    if not body.project_ids:
+        return {"likes": {}}
+    try:
+        rows = database().rpc("get_project_likes", {
+            "p_project_ids": [str(project_id) for project_id in body.project_ids],
+            "p_visitor_hash": visitor_hash(body.visitor_id),
+        }).execute().data
+        return {"likes": {row["project_id"]: {"count": row["like_count"], "liked": row["liked"]} for row in rows}}
+    except Exception as error:
+        logger.exception("Could not load project likes")
+        raise HTTPException(503, "Likes are unavailable. Check that the latest database migration is applied.") from error
+
+
+_like_lock = Lock()
+_like_clients: dict[str, tuple[float, int]] = {}
+
+
+def limit_likes(ip: str):
+    global _like_clients
+    now = time.monotonic()
+    with _like_lock:
+        _like_clients = {key: value for key, value in _like_clients.items() if now - value[0] < 60}
+        started, count = _like_clients.get(ip, (now, 0))
+        if count >= 60 or (ip not in _like_clients and len(_like_clients) >= 4096):
+            raise HTTPException(429, "Please wait before changing more likes.", headers={"Retry-After": "60"})
+        _like_clients[ip] = (started, count + 1)
+
+
+@app.post("/api/projects/{project_id}/like")
+def set_like(project_id: UUID, body: LikeInput, request: Request):
+    limit_likes(request.client.host if request.client else "unknown")
+    try:
+        rows = database().rpc("set_project_like", {
+            "p_project_id": str(project_id), "p_visitor_hash": visitor_hash(body.visitor_id), "p_liked": body.liked,
+        }).execute().data
+        if not rows:
+            raise HTTPException(404, "This project is no longer available.")
+        return {"count": rows[0]["like_count"], "liked": rows[0]["liked"]}
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Could not save project like")
+        raise HTTPException(503, "Couldn't save your like. Please try again.") from error

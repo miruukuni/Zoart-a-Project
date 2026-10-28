@@ -11,8 +11,9 @@ to the user and blocks submission until complete. Typed but unselected input
 must be selected or cleared before submission.
 
 A separate optional UCI major picker loads `/api/majors`, shows Anteater API
-attribution, and saves a stable `major_id`. An unavailable major catalog does
-not block posting without a major. The backend validates the major before saving.
+attribution, and saves multiple stable `major_ids` as removable chips. An unavailable
+major catalog does not block posting without majors. The backend validates every
+major and saves the project and major links atomically.
 
 Submission is guarded against repeated clicks. Success shows a confirmation;
 failure preserves the form and displays the backend error. Closing discards the
@@ -24,5 +25,5 @@ page scrolling, and restores focus when closed. Escape, backdrop, Cancel, and X
 close it. In the tag picker, Up/Down chooses an option, Enter selects or matches
 the input, and Escape closes suggestions first.
 
-Local setup, environment variables, and the required database migration are
-documented in the repository's root README.
+The current database migration and tag catalog workflow are documented in
+`docs/project-updates.md` at the repository root.
