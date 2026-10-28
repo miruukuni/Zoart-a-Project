@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import SearchBar from "@/components/SearchBar";
 import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
-import mascot from '../../assets/Mascot.png'; // save the UCI anteater image here
+import mascot from '../../assets/Mascot.png';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
+import { MASCOT_MESSAGES } from "@/data/mascot-messages";
 
 // Sticker config: position (% of the top area), color, tilt, shape, animation delay (s)
 const ZOARTS = [
@@ -18,11 +19,34 @@ const ZOARTS = [
   { top: "0%",  left: "62%", bg: "#8368FF", rot: -4,  shape: "rounded-full", delay: 0.8 },
 ];
 
-const SLIDE_SECONDS = 3.2;
+const SLIDE_SECONDS = 1.8;
+const ZOART_SOUND = "/sounds/auifilerandom.mp3";
 
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const { user } = useAuth();
+  const userId = user?.id;
+  const [mascotMessage, setMascotMessage] = useState<string>(MASCOT_MESSAGES[0]);
+  const zoartAudio = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    const timer = window.setTimeout(() => {
+      setMascotMessage(MASCOT_MESSAGES[Math.floor(Math.random() * MASCOT_MESSAGES.length)]);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [userId]);
+
+  const playZoart = () => {
+    // Created lazily so it only runs in the browser
+    if (!zoartAudio.current) {
+      zoartAudio.current = new Audio(ZOART_SOUND);
+    }
+    const audio = zoartAudio.current;
+    audio.currentTime = 0; // restart so rapid clicks re-trigger
+    audio.play().catch(() => {}); // ignore missing file / autoplay rejections
+  };
+
   return (
     <div className="flex min-h-dvh flex-col bg-[#FFEBC6] text-[#111111]">
       <style>{`
@@ -36,9 +60,15 @@ export default function Home() {
           50%      { transform: translateY(-8px) rotate(calc(var(--r) + 2deg)); }
         }
         .zoart-sticker {
+          cursor: pointer;
           animation:
             zoart-pop 0.5s cubic-bezier(.34,1.56,.64,1) var(--d) both,
             zoart-bob 3s ease-in-out calc(var(--d) + 0.5s) infinite;
+        }
+        .zoart-sticker:hover { filter: brightness(1.08); }
+        .zoart-sticker:active {
+          translate: 4px 4px;
+          box-shadow: 1px 1px 0 #111111;
         }
         @keyframes mascot-slide {
           from { transform: translateX(-110%); }
@@ -66,12 +96,15 @@ export default function Home() {
       <SearchBar setUploadOpen={setUploadOpen} />
 
       <main className="site-shell relative grid flex-1 items-center gap-8 pb-12 pt-4 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
-        {/* Zoart! stickers */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 hidden h-[34%] md:block">
+        {/* Zoart! stickers (clickable, play a sound) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-[34%] md:block">
           {ZOARTS.map((z, i) => (
-            <span
+            <button
               key={i}
-              className={`zoart-sticker absolute select-none border-[3px] border-[#111111] px-5 py-1.5 text-3xl leading-tight shadow-[5px_5px_0_#111111] lg:px-7 lg:py-2 lg:text-5xl ${z.shape}`}
+              type="button"
+              onClick={playZoart}
+              aria-label="Play Zoart sound"
+              className={`zoart-sticker pointer-events-auto absolute select-none border-[3px] border-[#111111] px-5 py-1.5 text-3xl leading-tight shadow-[5px_5px_0_#111111] lg:px-7 lg:py-2 lg:text-5xl ${z.shape}`}
               style={
                 {
                   top: z.top,
@@ -83,7 +116,7 @@ export default function Home() {
               }
             >
               Zoart!
-            </span>
+            </button>
           ))}
         </div>
 
@@ -122,14 +155,14 @@ export default function Home() {
         </div>
       </main>
 
-      {/* UCI mascot: slides to the middle of the screen, then the bubble pops */}
+      {/* UCI mascot: slides in at constant speed, then the bubble pops */}
       <Link
         href={user ? "/search?view=mine" : "/sign-in"}
         aria-label={user ? "See your projects" : "Sign in with the Zoart mascot"}
         className="mascot-slide fixed bottom-12 left-0 z-10 block w-40 rounded-2xl focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#CC404A] sm:bottom-16 sm:w-56 lg:w-64"
       >
-        <div className="mascot-bubble absolute bottom-full right-2 mb-3 rounded-2xl border-[3px] border-[#111111] bg-white px-4 py-2 text-xl shadow-[4px_4px_0_#111111] sm:text-2xl">
-          {user ? "My projects" : "Sign in"}
+        <div className="mascot-bubble absolute bottom-full right-2 mb-3 w-max max-w-[min(16rem,calc(100vw-2rem))] rounded-2xl border-[3px] border-[#111111] bg-white px-4 py-2 text-xl shadow-[4px_4px_0_#111111] sm:text-2xl">
+          {user ? mascotMessage : "sign in"}
           {/* bubble tail */}
           <span className="absolute -bottom-[10px] left-6 h-4 w-4 rotate-45 border-b-[3px] border-r-[3px] border-[#111111] bg-white" />
         </div>

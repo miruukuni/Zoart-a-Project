@@ -16,7 +16,14 @@ async function readProjects(tags: string[] | undefined, signal?: AbortSignal): P
   }
   // Embed links per project, avoiding a second query that could truncate majors.
   const majors = ",project_majors!project_id(major:uci_majors!major_id(id,name,degree))";
-  const variants = [`${projectFields},owner_id${majors}`, `${projectFields}${majors}`, `${projectFields},owner_id`, projectFields];
+  const variants = [
+    `${projectFields},owner_id,application_url${majors}`,
+    `${projectFields},owner_id${majors}`,
+    `${projectFields}${majors}`,
+    `${projectFields},owner_id,application_url`,
+    `${projectFields},owner_id`,
+    projectFields,
+  ];
   let result = await select(variants[0]);
   for (const fields of variants.slice(1)) {
     if (!result.error || !["PGRST200", "PGRST205", "42703"].includes(result.error.code)) break;

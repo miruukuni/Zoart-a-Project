@@ -11,6 +11,7 @@ from threading import Lock
 import time
 from typing import Annotated, Literal
 from uuid import UUID
+from urllib.parse import urlsplit
 
 import httpx
 from dotenv import load_dotenv
@@ -95,9 +96,28 @@ class ProjectInput(BaseModel):
     author: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=LIMITS["description"])
     contact_info: str = Field(min_length=1, max_length=300)
+    application_url: str | None = Field(default=None, max_length=LIMITS["application_url"])
     tags: list[str] = Field(min_length=1, max_length=MAX_TAGS)
     major_id: str | None = Field(default=None, max_length=100)
     major_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(default_factory=list, max_length=100)
+
+    @field_validator("application_url")
+    @classmethod
+    def valid_application_url(cls, value: str | None) -> str | None:
+        value = value.strip() if value else None
+        if not value:
+            return None
+        try:
+            parsed = urlsplit(value)
+            # Accessing port also validates malformed/out-of-range port values.
+            parsed.port
+            if (parsed.scheme not in {"https", "http"} or not parsed.hostname
+                    or parsed.username is not None or parsed.password is not None
+                    or "\\" in value or any(character.isspace() or ord(character) < 32 or ord(character) == 127 for character in value)):
+                raise ValueError()
+        except ValueError as error:
+            raise ValueError("Use a full http:// or https:// link without spaces or a username/password.") from error
+        return value
 
     @field_validator("major_ids")
     @classmethod

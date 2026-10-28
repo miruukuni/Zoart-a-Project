@@ -8,6 +8,7 @@ import type { LikeState } from "@/lib/project-likes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { setProjectStatus } from "../../../lib/projects";
 import ProjectAge from "./ProjectAge";
+import { applicationUrl } from "@/lib/application-url";
 
 const chipColors = ["bg-[#FFB100]", "bg-[#F194B4]", "bg-[#00ADA5]"];
 
@@ -22,6 +23,7 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
   const offline = project.status !== "active";
   const owned = !!user && project.owner_id === user.id;
   const tags = project.tags ?? [];
+  const applyUrl = applicationUrl(project.application_url);
   const majors = project.project_majors?.flatMap(link => link.major ? [link.major] : []) ?? [];
   const displayedMajors = majors.length ? majors : project.major ? [project.major] : [];
   const likeLabel = likesReady && like ? `${like.count} ${like.count === 1 ? "like" : "likes"}` : user ? "Likes unavailable" : "Sign in to like this project";
@@ -67,7 +69,10 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
           </div>
         </section>
         <section className="flex min-h-0 min-w-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
-          <h3 className="mb-1 shrink-0 text-2xl leading-tight">Contact</h3>
+          <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
+            <h3 className="text-2xl leading-tight">Contact</h3>
+            {applyUrl && <a href={applyUrl} target="_blank" rel="noopener noreferrer" aria-label={`Apply to ${project.title || "project"} (opens in a new tab)`} className="shrink-0 rounded-lg border-2 border-[#111111] bg-[#F194B4] px-3 py-1 font-[family-name:var(--font-search-inter)] text-sm font-bold shadow-[2px_2px_0_#111111] hover:bg-white focus-visible:outline-4 focus-visible:outline-offset-2">Apply ↗</a>}
+          </div>
           <p tabIndex={0} aria-label="Project contact information" className="min-h-0 flex-1 overflow-y-auto overscroll-contain whitespace-pre-wrap rounded-sm font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-[#111111]">{project.contact_info || "No contact information provided."}</p>
         </section>
       </div>

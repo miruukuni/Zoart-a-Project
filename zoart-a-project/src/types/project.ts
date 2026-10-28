@@ -3,6 +3,7 @@ export type CreateProjectInput = {
   author: string;
   description: string;
   contact_info: string;
+  application_url?: string | null;
   tags: string[];
   major_ids?: string[];
 };
@@ -13,6 +14,7 @@ export type Project = {
   author: string | null;
   description: string | null;
   contact_info: string | null;
+  application_url?: string | null;
   tags: string[] | null;
   status: string | null;
   created_at: string | null;

@@ -8,7 +8,8 @@ import { canonicalTag, matchingTags, typoTag, MAX_TAGS } from "@/lib/tags";
 import MajorPicker, { type Major } from "./MajorPicker";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { TITLE_LIMIT, DESCRIPTION_LIMIT } from "@/lib/project-limits";
+import { TITLE_LIMIT, DESCRIPTION_LIMIT, APPLICATION_URL_LIMIT } from "@/lib/project-limits";
+import { applicationUrl } from "@/lib/application-url";
 
 
 export type UploadProjectModalProps = {
@@ -55,6 +56,7 @@ function OpenUploadProjectModal({
     author: "",
     description: "",
     contact_info: "",
+    application_url: "",
     tags: [],
     major_ids: [],
   });
@@ -165,11 +167,13 @@ function OpenUploadProjectModal({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending.current || tagPending.current || status === "success") return;
+    const rawApplicationUrl = values.application_url?.trim() ?? "";
     const input: CreateProjectInput = {
       title: values.title.trim(),
       author: values.author.trim(),
       description: values.description.trim(),
       contact_info: values.contact_info.trim(),
+      application_url: rawApplicationUrl ? applicationUrl(rawApplicationUrl) ?? rawApplicationUrl : null,
       tags: [...values.tags],
       major_ids: values.major_ids,
     };
@@ -184,6 +188,8 @@ function OpenUploadProjectModal({
     if (input.description.length > DESCRIPTION_LIMIT) nextErrors.description = `Use ${DESCRIPTION_LIMIT} characters or fewer.`;
     if (!input.contact_info)
       nextErrors.contact_info = "Enter an email address or contact handle.";
+    if (rawApplicationUrl && !applicationUrl(rawApplicationUrl))
+      nextErrors.application_url = "Enter a full http:// or https:// web address, without spaces or a username/password.";
     setErrors(nextErrors);
     const firstError = Object.keys(nextErrors)[0];
     if (firstError) {
@@ -541,6 +547,12 @@ function OpenUploadProjectModal({
                 >
                   This contact info will be visible on your project.
                 </p>
+              </div>
+              <div>
+                <label htmlFor={`${id}-application_url`} className="mb-1 block text-[13px] font-bold leading-[18px]">Application / project link (optional)</label>
+                <input id={`${id}-application_url`} name="application_url" type="url" inputMode="url" autoComplete="url" maxLength={APPLICATION_URL_LIMIT} value={values.application_url ?? ""} onChange={event => update("application_url", event.target.value)} placeholder="https://example.com/join" className={inputClass} aria-invalid={!!errors.application_url} aria-describedby={`${id}-application-note${errors.application_url ? ` ${id}-application_url-error` : ""}`} />
+                <p id={`${id}-application-note`} className="mt-2 text-[11px] leading-4">Add a sign-up form or project page. This becomes an Apply button next to Contact and opens in a new tab.</p>
+                {error("application_url")}
               </div>
             </fieldset>
             {status === "error" && (
