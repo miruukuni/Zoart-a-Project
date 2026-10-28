@@ -1,34 +1,30 @@
 import { supabase } from "./client";
 import type { CreateProjectInput, Project } from "../src/types/project";
+import { api } from "../src/lib/api";
+
+const projectFields = "id,title,author,description,contact_info,tags,status,created_at,major_id,major:uci_majors(id,name,degree)";
 
 export async function fetchProjects(signal?: AbortSignal): Promise<Project[]> {
   const request = supabase
     .from("projects")
-    .select("id,title,author,description,contact_info,tags,status,created_at")
+    .select(projectFields)
     .order("created_at", { ascending: false });
   const timeout = AbortSignal.timeout(15000);
   const { data, error } = await request.abortSignal(
     signal ? AbortSignal.any([signal, timeout]) : timeout,
   );
   if (error) throw error;
-  return (data ?? []) as Project[];
+  return (data ?? []) as unknown as Project[];
 }
 
 export async function createProject(
   input: CreateProjectInput,
 ): Promise<void> {
-  const { error } = await supabase.from("projects").insert({
-    title: input.title,
-    author: input.author,
-    description: input.description,
-    contact_info: input.contact_info,
-    tags: input.tags,
+  await api("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
-
-  if (error) {
-    console.error("Error creating project:", error);
-    throw error;
-  }
 }
 export async function fetchProjectsByTags(
   tagNames: string[],
@@ -36,11 +32,11 @@ export async function fetchProjectsByTags(
 ): Promise<Project[]> {
   const tags = [...new Set(tagNames.map(tag => tag.trim()).filter(Boolean))];
 
-  if (!tags.length) return fetchProjects(signal);
+  if (!tags.length) return [];
 
   const request = supabase
     .from("projects")
-    .select("id,title,author,description,contact_info,tags,status,created_at")
+    .select(projectFields)
     .overlaps("tags", tags)
     .order("created_at", { ascending: false });
 
@@ -50,6 +46,6 @@ export async function fetchProjectsByTags(
   );
 
   if (error) throw error;
-  return (data ?? []) as Project[];
+  return (data ?? []) as unknown as Project[];
 }
 

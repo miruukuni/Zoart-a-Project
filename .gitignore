@@ -5,6 +5,8 @@
 
 # Dependencies and Python caches
 node_modules/
+.tools/
+*.tsbuildinfo
 .venv/
 venv/
 __pycache__/

@@ -1,29 +1,15 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Search, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import Link from "next/link";
 
 type SearchBarProps = {
-  placeholder?: string;
-  onSearch?: (query: string) => void;
-  className?: string;
   setUploadOpen: (open: boolean) => void; 
 };
 
 export default function SearchBar({
-  placeholder = "Search",
-  onSearch,
-  className = "",
   setUploadOpen,
 }: SearchBarProps) {
-  const [query, setQuery] = useState("");
-
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    onSearch?.(query.trim());
-  }
-
   return (
     <div className="flex flex-row  gap-[29vw] p-10 justify-self-end">
 

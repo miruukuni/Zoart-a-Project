@@ -3,6 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { CreateProjectInput } from "@/types/project";
+import { api } from "@/lib/api";
+import { canonicalTag, matchingTags, MAX_TAGS } from "@/lib/tags";
+import { majorLabel } from "@/lib/majors";
 
 
 export type UploadProjectModalProps = {
@@ -15,7 +18,7 @@ export type UploadProjectModalProps = {
 
 type Field = keyof CreateProjectInput;
 type Errors = Partial<Record<Field, string>>;
-const suggestions = ["React", "Web Dev", "Design", "AI / ML", "Mobile"];
+type Major = { id: string; name: string; degree: string };
 const chipColors = [
   "bg-[var(--yellow-orange,#FFB100)]",
   "bg-[var(--bubblegum-pink,#F194B4)]",
@@ -50,33 +53,38 @@ function OpenUploadProjectModal({
     description: "",
     contact_info: "",
     tags: [],
+    major_id: null,
   });
   const [customTag, setCustomTag] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [activeTagIndex, setActiveTagIndex] = useState(-1);
+  const tagPending = useRef(false);
+  const [normalizing, setNormalizing] = useState(false);
+  const [tagNotice, setTagNotice] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [majorStatus, setMajorStatus] = useState("Loading UCI majors…");
+  const [majorAttempt, setMajorAttempt] = useState(0);
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<
     "idle" | "pending" | "success" | "error"
   >("idle");
   const tagQuery = customTag.trim();
-  const tagChoices = suggestions
+  const tagChoices = matchingTags(tagQuery)
     .filter(
       (tag) =>
         !values.tags.some(
           (selected) => selected.toLowerCase() === tag.toLowerCase(),
         ),
     )
-    .filter((tag) => tag.toLowerCase().includes(tagQuery.toLowerCase()))
     .map((tag) => ({ value: tag, label: tag }));
   if (
     tagQuery &&
-    ![...suggestions, ...values.tags].some(
-      (tag) => tag.toLowerCase() === tagQuery.toLowerCase(),
-    )
+    !canonicalTag(tagQuery)
   ) {
-    tagChoices.push({ value: tagQuery, label: `Create “${tagQuery}”` });
+    tagChoices.push({ value: tagQuery, label: `Find approved tag for “${tagQuery}”` });
   }
-  const showTagPicker = tagPickerOpen && status !== "pending";
+  const showTagPicker = tagPickerOpen && status !== "pending" && !normalizing && values.tags.length < MAX_TAGS;
   const activeTag =
     activeTagIndex >= 0 ? tagChoices[activeTagIndex] : undefined;
 
@@ -100,21 +108,51 @@ function OpenUploadProjectModal({
     if (status === "success") successPanel.current?.focus();
   }, [status]);
 
-  function update(field: Exclude<Field, "tags">, value: string) {
+  useEffect(() => {
+    const controller = new AbortController();
+    api<{ majors: Major[] }>("/api/majors", { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) })
+      .then(({ majors }) => { setMajors(majors); setMajorStatus(""); })
+      .catch(() => { if (!controller.signal.aborted) setMajorStatus("UCI majors are unavailable. You can still post without one."); });
+    return () => controller.abort();
+  }, [majorAttempt]);
+
+  function update(field: Exclude<Field, "tags" | "major_id">, value: string) {
     setValues((previous) => ({ ...previous, [field]: value }));
     if (value.trim())
       setErrors((previous) => ({ ...previous, [field]: undefined }));
     if (status === "error") setStatus("idle");
   }
 
-  function addTag(value: string) {
-    const tag = value.trim();
-    if (!tag) return;
+  async function addTag(value: string) {
+    if (tagPending.current || pending.current || !value.trim()) return;
+    if (values.tags.length >= MAX_TAGS) {
+      setErrors(previous => ({ ...previous, tags: `Choose up to ${MAX_TAGS} tags.` }));
+      return;
+    }
+    let tag = canonicalTag(value);
+    if (!tag) {
+      tagPending.current = true;
+      setNormalizing(true);
+      try {
+        const result = await api<{ tag: string | null }>("/api/normalize_tag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag: value.trim() }) });
+        if (!active.current) return;
+        tag = result.tag ? canonicalTag(result.tag) : undefined;
+        if (!tag) throw new Error("No close match found. Choose an approved tag from the list.");
+      } catch (error) {
+        if (active.current) setErrors(previous => ({ ...previous, tags: error instanceof Error ? error.message : "Could not match that tag." }));
+        return;
+      } finally {
+        tagPending.current = false;
+        if (active.current) setNormalizing(false);
+      }
+    }
+    const label = tag;
     setValues((previous) =>
-      previous.tags.some((item) => item.toLowerCase() === tag.toLowerCase())
+      previous.tags.includes(label) || previous.tags.length >= MAX_TAGS
         ? previous
-        : { ...previous, tags: [...previous.tags, tag] },
+        : { ...previous, tags: [...previous.tags, label] },
     );
+    setTagNotice(value.trim() === label ? `Selected ${label}.` : `“${value.trim()}” maps to ${label}.`);
     setCustomTag("");
     setActiveTagIndex(-1);
     setTagPickerOpen(false);
@@ -123,18 +161,21 @@ function OpenUploadProjectModal({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending.current || status === "success") return;
+    if (pending.current || tagPending.current || status === "success") return;
     const input: CreateProjectInput = {
       title: values.title.trim(),
       author: values.author.trim(),
       description: values.description.trim(),
       contact_info: values.contact_info.trim(),
       tags: [...values.tags],
+      major_id: values.major_id,
     };
     const nextErrors: Errors = {};
     if (!input.title) nextErrors.title = "Enter a project title.";
     if (!input.author) nextErrors.author = "Enter your name.";
     if (!input.tags.length) nextErrors.tags = "Add at least one tag.";
+    if (input.tags.length > MAX_TAGS) nextErrors.tags = `Choose up to ${MAX_TAGS} tags.`;
+    if (customTag.trim()) nextErrors.tags = "Select or match the tag you typed before creating your project.";
     if (!input.description) nextErrors.description = "Describe your project.";
     if (!input.contact_info)
       nextErrors.contact_info = "Enter an email address or contact handle.";
@@ -151,8 +192,11 @@ function OpenUploadProjectModal({
     try {
       await onSubmit(input);
       if (active.current) setStatus("success");
-    } catch {
-      if (active.current) setStatus("error");
+    } catch (error) {
+      if (active.current) {
+        setSubmitError(error instanceof Error ? error.message : "Could not create your project.");
+        setStatus("error");
+      }
     } finally {
       pending.current = false;
     }
@@ -187,6 +231,7 @@ function OpenUploadProjectModal({
           id={`${id}-${field}`}
           name={field}
           required
+          maxLength={field === "title" ? 160 : field === "author" ? 100 : 300}
           autoComplete={field === "author" ? "name" : "off"}
           value={values[field]}
           onChange={(event) => update(field, event.target.value)}
@@ -296,7 +341,7 @@ function OpenUploadProjectModal({
             <p className="text-sm">
               {demo
                 ? "The demo callback received your project. No database write occurred."
-                : "Your submission callback completed successfully."}
+                : "Your project is now available for others to discover."}
             </p>
             <button
               type="button"
@@ -331,7 +376,7 @@ function OpenUploadProjectModal({
                   htmlFor={`${id}-tags`}
                   className="mb-1 block text-[13px] font-bold leading-[18px]"
                 >
-                  Tags *
+                  Tags * ({values.tags.length}/{MAX_TAGS})
                 </label>
                 <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border-2 border-[#141414] bg-white px-2 py-1">
                   {values.tags.map((tag, index) => (
@@ -356,6 +401,8 @@ function OpenUploadProjectModal({
                     name="tags"
                     role="combobox"
                     autoComplete="off"
+                    maxLength={80}
+                    disabled={normalizing || values.tags.length >= MAX_TAGS}
                     aria-expanded={showTagPicker}
                     aria-autocomplete="list"
                     aria-controls={
@@ -407,16 +454,18 @@ function OpenUploadProjectModal({
                         setActiveTagIndex(-1);
                       }
                     }}
-                    placeholder="+ Add tag"
+                    placeholder={normalizing ? "Matching tag…" : values.tags.length >= MAX_TAGS ? "7 tags selected" : "+ Add tag"}
                     aria-invalid={!!errors.tags}
                     aria-describedby={`${id}-tag-help${errors.tags ? ` ${id}-tags-error` : ""}`}
                     className="min-w-0 flex-1 basis-20 rounded px-1 py-1 text-sm leading-[18px] placeholder:text-[#555] focus-visible:outline-2 focus-visible:outline-[var(--sea-teal,#00ADA5)]"
                   />
                 </div>
-                <p id={`${id}-tag-help`} className="sr-only">
+                <p id={`${id}-tag-help`} className="mt-1 text-xs">
+                  Choose up to 7 approved tags. Common abbreviations are matched automatically.
                   Use Up and Down arrows to choose a suggestion, Enter to select
-                  or create a tag, and Escape to close suggestions.
+                  or match a tag, and Escape to close suggestions.
                 </p>
+                <p role="status" className="mt-1 text-xs">{normalizing ? "Finding the closest approved tag…" : tagNotice}</p>
                 {showTagPicker && (
                   <div
                     id={`${id}-tag-options`}
@@ -442,13 +491,22 @@ function OpenUploadProjectModal({
                     ) : (
                       <p className="px-2 py-1.5 text-xs" role="status">
                         {tagQuery
-                          ? "This tag is already selected."
-                          : "All suggestions selected. Type a custom tag."}
+                          ? "No other suggestions. Use the match option or choose another tag."
+                          : "All matching tags are selected."}
                       </p>
                     )}
                   </div>
                 )}
                 {error("tags")}
+              </div>
+              <div>
+                <label htmlFor={`${id}-major`} className="mb-1 block text-[13px] font-bold">UCI major (optional)</label>
+                <select id={`${id}-major`} name="major_id" value={values.major_id ?? ""} onChange={event => setValues(previous => ({ ...previous, major_id: event.target.value || null }))} className={inputClass} disabled={!majors.length}>
+                  <option value="">Any major / no preference</option>
+                  {majors.map(major => <option key={major.id} value={major.id}>{majorLabel(major)}</option>)}
+                </select>
+                <p className="mt-1 text-xs">Separate from your seven project tags. Data from <a href="https://icssc.link/about-anteaterapi" target="_blank" rel="noreferrer" className="underline">Anteater API</a>.</p>
+                {majorStatus && <p role="status" className="mt-1 text-xs">{majorStatus} {majorStatus.includes("unavailable") && <button type="button" className="underline" onClick={() => { setMajorStatus("Loading UCI majors…"); setMajorAttempt(previous => previous + 1); }}>Retry</button>}</p>}
               </div>
               <div>
                 <label
@@ -461,6 +519,7 @@ function OpenUploadProjectModal({
                   id={`${id}-description`}
                   name="description"
                   required
+                  maxLength={10000}
                   value={values.description}
                   onChange={(event) =>
                     update("description", event.target.value)
@@ -489,9 +548,7 @@ function OpenUploadProjectModal({
                 role="alert"
                 className="mt-3 rounded-md border-2 border-[var(--coral-red,#CC404A)] bg-white p-3 text-xs font-bold text-[var(--coral-red,#CC404A)]"
               >
-                {demo
-                  ? "The demo callback failed."
-                  : "The submission callback failed."}{" "}
+                {demo ? "The demo callback failed." : submitError}{" "}
                 Your input is still here. Please try again.
               </p>
             )}
@@ -508,7 +565,7 @@ function OpenUploadProjectModal({
               </button>
               <button
                 type="submit"
-                disabled={status === "pending"}
+                disabled={status === "pending" || normalizing}
                 className={`${buttonClass} flex-1 bg-[var(--sea-teal,#00ADA5)]`}
               >
                 {status === "pending" ? "Submitting…" : "Create project →"}

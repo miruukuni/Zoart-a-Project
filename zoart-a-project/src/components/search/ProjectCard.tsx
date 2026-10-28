@@ -1,4 +1,5 @@
 import type { Project } from "@/types/project";
+import { majorLabel } from "@/lib/majors";
 
 const chipColors = ["bg-[#FFB100]", "bg-[#F194B4]", "bg-[#00ADA5]"];
 
@@ -14,6 +15,7 @@ export default function ProjectCard({ project }: { project: Project }) {
       </header>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-2.5 sm:gap-4 sm:p-3">
+        {project.major && <p className="rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1.5 text-xs font-bold">UCI major: {majorLabel(project.major)}</p>}
         {tags.length > 0 && (
           <ul aria-label="Project tags" className="flex min-w-0 flex-wrap gap-2 font-[family-name:var(--font-search-inter)]">
             {tags.map((tag, index) => (

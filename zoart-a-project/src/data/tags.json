@@ -1,0 +1,21 @@
+[
+  {"label":"Computer Science","aliases":["cs","comp sci","compsci"]},
+  {"label":"Web Dev","aliases":["web development","web","frontend","backend","full stack"]},
+  {"label":"AI / ML","aliases":["ai","ml","artificial intelligence","machine learning","deep learning","llm"]},
+  {"label":"Data Science","aliases":["data analytics","data analysis","data visualization"]},
+  {"label":"Games","aliases":["game","gaming","game dev","game development","unity","unreal","godot"]},
+  {"label":"Design","aliases":["ui","ux","ui ux","graphic design","figma"]},
+  {"label":"Mobile","aliases":["mobile dev","mobile development","ios","android","react native","flutter"]},
+  {"label":"React","aliases":["reactjs","react js"]},
+  {"label":"Hardware","aliases":["electronics","embedded systems","iot"]},
+  {"label":"Robotics","aliases":["robot","robots"]},
+  {"label":"Cybersecurity","aliases":["cyber security","security","infosec"]},
+  {"label":"Research","aliases":["academic research","scientific research"]},
+  {"label":"Business","aliases":["entrepreneurship","startup","startups"]},
+  {"label":"Education","aliases":["edtech","teaching","learning"]},
+  {"label":"Health","aliases":["healthcare","medical","medicine"]},
+  {"label":"Environment","aliases":["sustainability","climate","environmental"]},
+  {"label":"Art","aliases":["arts","digital art","illustration"]},
+  {"label":"Music","aliases":["audio","musical"]},
+  {"label":"Community","aliases":["volunteering","social impact","community service"]}
+]

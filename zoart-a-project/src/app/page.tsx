@@ -1,72 +1,11 @@
 "use client";
 
-import { supabase } from "../../lib/client";
 import { useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
 import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import { createProject } from "../../lib/projects";
-import { Inter } from "next/font/google";
-const searchInter = Inter({ subsets: ["latin"], variable: "--font-search-inter" });
-
-// async function fetchMajors() {
-//   const response = await fetch(
-//     "https://anteaterapi.com/v2/rest/programs/majors",
-//   );
-
-//   if (!response.ok) {
-//     throw new Error("Couldn't load majors");
-//   }
-
-//   const result = await response.json();
-
-//   if (!result.ok) {
-//     throw new Error("Couldn't load majors");
-//   }
-
-//   return result.data;
-// }
-
-async function fetchGemini() {
-  const response = await fetch("http://localhost:8000/api/gemini_search", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({user_query:"How many days to travel to mars"}),
-    }
-  );
-
-  console.log("1\n")
-  if (!response.ok) {
-    throw new Error("Couldn't load gemini");
-  }
-  console.log(response)
-  const result = await response.json();
-
-  console.log(result)
-  if (!result.ok) {
-    throw new Error("Couldn't load gemini 2");
-  }
-
-  return result.data;
-}
-interface Tag {
-  id: number;
-  name: string;
-  email: string;
-}
-
-
-async function fetchProjects() {
-  const { data, error } = await supabase.from("projects").select();
-  if (error) {
-    console.error("Error fetching projects:", error);
-    return [];
-  }
-  return data;
-}
 
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -85,9 +24,9 @@ export default function Home() {
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-2.5 sm:gap-4 sm:p-3">
           {/* Tags (optional, delete if you don't want them) */}
           <ul className="flex min-w-0 flex-wrap gap-2 font-[family-name:var(--font-search-inter)]">
-            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#CC404A] px-2 py-1.5 text-xs font-bold leading-4">For Learning</li>
-            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#00ADA5] px-2 py-1.5 text-xs font-bold leading-4">For Connecting</li>
-            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#F194B4] px-2 py-1.5 text-xs font-bold leading-4">For You</li>
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#CC404A] px-2 py-1.5 text-xs font-bold leading-4">Build a Project</li>
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#00ADA5] px-2 py-1.5 text-xs font-bold leading-4">Make Connections</li>
+            <li className="max-w-full rounded-md border-2 border-[#111111] bg-[#F194B4] px-2 py-1.5 text-xs font-bold leading-4">Add things to your resume</li>
           </ul>
 
           {/* Orange section */}
@@ -114,18 +53,7 @@ export default function Home() {
         onSubmit={createProject}
       />
         
-      <button
-        onClick={async () => {
-          try {
-            const tags = await fetchGemini();
-            console.log("Tags:", tags);
-          } catch (error: unknown){
-            console.error(error)
-          }
-        }}  
-      >
-        Touch Me!
-      </button>
+
     </div>
 
     
