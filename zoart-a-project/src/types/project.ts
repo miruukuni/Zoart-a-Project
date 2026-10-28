@@ -17,6 +17,7 @@ export type Project = {
   status: string | null;
   created_at: string | null;
   major_id?: string | null;
+  owner_id?: string | null;
   major?: { id: string; name: string; degree: string } | null;
   project_majors?: { major: { id: string; name: string; degree: string } | null }[];
 };

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useAuth } from "@/components/auth/AuthProvider";
 import SearchBar from "@/components/SearchBar";
 import title from '../../assets/Title.svg';
 import intersect from '../../assets/Intersect.svg';
@@ -20,6 +22,7 @@ const SLIDE_SECONDS = 3.2;
 
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const { user } = useAuth();
   return (
     <div className="flex min-h-dvh flex-col bg-[#FFEBC6] text-[#111111]">
       <style>{`
@@ -120,17 +123,18 @@ export default function Home() {
       </main>
 
       {/* UCI mascot: slides to the middle of the screen, then the bubble pops */}
-      <div
-        aria-hidden="true"
-        className="mascot-slide pointer-events-none fixed bottom-12 left-0 z-10 w-40 sm:bottom-16 sm:w-56 lg:w-64"
+      <Link
+        href={user ? "/search?view=mine" : "/sign-in"}
+        aria-label={user ? "See your projects" : "Sign in with the Zoart mascot"}
+        className="mascot-slide fixed bottom-12 left-0 z-10 block w-40 rounded-2xl focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#CC404A] sm:bottom-16 sm:w-56 lg:w-64"
       >
         <div className="mascot-bubble absolute bottom-full right-2 mb-3 rounded-2xl border-[3px] border-[#111111] bg-white px-4 py-2 text-xl shadow-[4px_4px_0_#111111] sm:text-2xl">
-          Sign in
+          {user ? "My projects" : "Sign in"}
           {/* bubble tail */}
           <span className="absolute -bottom-[10px] left-6 h-4 w-4 rotate-45 border-b-[3px] border-r-[3px] border-[#111111] bg-white" />
         </div>
         <Image src={mascot} alt="" className="h-auto w-full" />
-      </div>
+      </Link>
 
       <footer aria-hidden="true" className="mt-auto h-12 shrink-0 overflow-hidden sm:h-16">
         <Image src={intersect} alt="" className="h-full w-full object-cover" sizes="100vw" />

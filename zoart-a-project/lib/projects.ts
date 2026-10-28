@@ -15,10 +15,12 @@ async function readProjects(tags: string[] | undefined, signal?: AbortSignal): P
     return request.abortSignal(requestSignal);
   }
   // Embed links per project, avoiding a second query that could truncate majors.
-  let result = await select(`${projectFields},project_majors!project_id(major:uci_majors!major_id(id,name,degree))`);
-  if (result.error && ["PGRST200", "PGRST205"].includes(result.error.code)) {
-    // Preserve the existing single-major display until the upgrade is applied.
-    result = await select(projectFields);
+  const majors = ",project_majors!project_id(major:uci_majors!major_id(id,name,degree))";
+  const variants = [`${projectFields},owner_id${majors}`, `${projectFields}${majors}`, `${projectFields},owner_id`, projectFields];
+  let result = await select(variants[0]);
+  for (const fields of variants.slice(1)) {
+    if (!result.error || !["PGRST200", "PGRST205", "42703"].includes(result.error.code)) break;
+    result = await select(fields);
   }
   if (result.error) throw result.error;
   return (result.data ?? []) as unknown as Project[];
@@ -35,6 +37,14 @@ export async function createProject(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    auth: "required",
+  });
+}
+
+export async function setProjectStatus(projectId: string, status: "active" | "offline"): Promise<void> {
+  await api(`/api/projects/${encodeURIComponent(projectId)}/status`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }), auth: "required",
   });
 }
 export async function fetchProjectsByTags(

@@ -6,6 +6,9 @@ import type { CreateProjectInput } from "@/types/project";
 import { api } from "@/lib/api";
 import { canonicalTag, matchingTags, typoTag, MAX_TAGS } from "@/lib/tags";
 import MajorPicker, { type Major } from "./MajorPicker";
+import Link from "next/link";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { TITLE_LIMIT, DESCRIPTION_LIMIT } from "@/lib/project-limits";
 
 
 export type UploadProjectModalProps = {
@@ -40,6 +43,7 @@ function OpenUploadProjectModal({
   demo = false,
 }: UploadProjectModalProps) {
   const id = useId();
+  const { user, loading: authLoading } = useAuth();
   const dialog = useRef<HTMLDialogElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const tagInput = useRef<HTMLInputElement>(null);
@@ -171,11 +175,13 @@ function OpenUploadProjectModal({
     };
     const nextErrors: Errors = {};
     if (!input.title) nextErrors.title = "Enter a project title.";
+    if (input.title.length > TITLE_LIMIT) nextErrors.title = `Use ${TITLE_LIMIT} characters or fewer.`;
     if (!input.author) nextErrors.author = "Enter your name.";
     if (!input.tags.length) nextErrors.tags = "Add at least one tag.";
     if (input.tags.length > MAX_TAGS) nextErrors.tags = `Choose up to ${MAX_TAGS} tags.`;
     if (customTag.trim()) nextErrors.tags = "Select or match the tag you typed before creating your project.";
     if (!input.description) nextErrors.description = "Describe your project.";
+    if (input.description.length > DESCRIPTION_LIMIT) nextErrors.description = `Use ${DESCRIPTION_LIMIT} characters or fewer.`;
     if (!input.contact_info)
       nextErrors.contact_info = "Enter an email address or contact handle.";
     setErrors(nextErrors);
@@ -230,7 +236,7 @@ function OpenUploadProjectModal({
           id={`${id}-${field}`}
           name={field}
           required
-          maxLength={field === "title" ? 160 : field === "author" ? 100 : 300}
+          maxLength={field === "title" ? TITLE_LIMIT : field === "author" ? 100 : 300}
           autoComplete={field === "author" ? "name" : "off"}
           value={values[field]}
           onChange={(event) => update(field, event.target.value)}
@@ -241,11 +247,13 @@ function OpenUploadProjectModal({
             [
               errors[field] ? `${id}-${field}-error` : "",
               field === "contact_info" ? `${id}-contact-note` : "",
+              field === "title" ? `${id}-title-count` : "",
             ]
               .filter(Boolean)
               .join(" ") || undefined
           }
         />
+        {field === "title" && <p id={`${id}-title-count`} className="mt-1 text-right text-xs">{values.title.length}/{TITLE_LIMIT} characters</p>}
         {error(field)}
       </div>
     );
@@ -304,7 +312,7 @@ function OpenUploadProjectModal({
       className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-[460px] overflow-y-auto overscroll-contain rounded-[10px] border-4 border-[#141414] bg-[#ffebc4] p-0 font-[Arial,Helvetica,sans-serif] text-[#141414] shadow-[6px_6px_0_rgba(0,0,0,0.3)] backdrop:bg-black/60"
     >
       <header className="flex items-center justify-between gap-3 bg-[var(--sea-teal,#00ADA5)] px-4 py-2">
-        <p className="text-xs font-bold">ZOT A PROJECT / NEW PROJECT</p>
+        <p className="text-xs font-bold">ZOART A PROJECT / UPLOAD A PROJECT</p>
         <button
           type="button"
           aria-label="Close Upload Project"
@@ -319,7 +327,7 @@ function OpenUploadProjectModal({
           id={`${id}-heading`}
           className="text-[22px] font-bold leading-tight"
         >
-          Find your next teammate.
+          Find your collaborators
         </h2>
         <p
           id={`${id}-intro`}
@@ -327,7 +335,7 @@ function OpenUploadProjectModal({
         >
           Share your project and find people to build with.
         </p>
-        {status === "success" ? (
+        {!demo && authLoading ? <p role="status" className="py-6">Checking your account…</p> : !demo && !user ? <div className="space-y-4 rounded-xl border-2 border-[#111111] bg-white p-4"><p>Sign in to share a project and manage its availability.</p><Link href="/sign-in?next=%2Fsearch" className={`${buttonClass} inline-block bg-[#F194B4]`}>Sign in to continue</Link></div> : status === "success" ? (
           <div
             ref={successPanel}
             tabIndex={-1}
@@ -460,9 +468,7 @@ function OpenUploadProjectModal({
                   />
                 </div>
                 <p id={`${id}-tag-help`} className="mt-1 text-xs">
-                  Choose up to 7 approved tags. Abbreviations and clear typos are matched automatically.
-                  Use Up and Down arrows to choose a suggestion, Enter to select
-                  or match a tag, and Escape to close suggestions.
+                  Choose up to 7 approved tags. Abbreviations and typos are matched automatically.
                 </p>
                 <p role="status" className="mt-1 text-xs">{normalizing ? "Finding the closest approved tag…" : tagNotice}</p>
                 {showTagPicker && (
@@ -500,7 +506,7 @@ function OpenUploadProjectModal({
               </div>
               <div>
                 <MajorPicker majors={majors} selected={values.major_ids ?? []} onChange={major_ids => setValues(previous => ({ ...previous, major_ids }))} />
-                <p className="mt-1 text-xs">Add multiple majors, or leave empty for any major. Separate from your seven project tags. Data from <a href="https://icssc.link/about-anteaterapi" target="_blank" rel="noreferrer" className="underline">Anteater API</a>.</p>
+                <p className="mt-1 text-xs">Add relevant majors(optional). Separated from project tags. Data from <a href="https://icssc.link/about-anteaterapi" target="_blank" rel="noreferrer" className="underline">Anteater API</a>.</p>
                 {majorStatus && <p role="status" className="mt-1 text-xs">{majorStatus} {majorStatus.includes("unavailable") && <button type="button" className="underline" onClick={() => { setMajorStatus("Loading UCI majors…"); setMajorAttempt(previous => previous + 1); }}>Retry</button>}</p>}
               </div>
               <div>
@@ -514,18 +520,17 @@ function OpenUploadProjectModal({
                   id={`${id}-description`}
                   name="description"
                   required
-                  maxLength={10000}
+                  maxLength={DESCRIPTION_LIMIT}
                   value={values.description}
                   onChange={(event) =>
                     update("description", event.target.value)
                   }
                   placeholder="A map of open study spaces at UCI. Looking for someone to help build the frontend."
                   aria-invalid={!!errors.description}
-                  aria-describedby={
-                    errors.description ? `${id}-description-error` : undefined
-                  }
+                  aria-describedby={`${id}-description-count${errors.description ? ` ${id}-description-error` : ""}`}
                   className={`${inputClass} block min-h-[88px] resize-y`}
                 />
+                <p id={`${id}-description-count`} className="mt-1 text-right text-xs">{values.description.length}/{DESCRIPTION_LIMIT} characters</p>
                 {error("description")}
               </div>
               <div>

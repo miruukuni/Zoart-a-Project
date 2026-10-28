@@ -9,22 +9,25 @@ from pathlib import Path
 import re
 from threading import Lock
 import time
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field, field_validator
 from supabase import create_client
+from supabase_auth.errors import AuthRetryableError
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 logger = logging.getLogger(__name__)
 CATALOG = json.loads((Path(__file__).resolve().parents[2] / "zoart-a-project/src/data/tags.json").read_text())
 MAX_TAGS = 7
+LIMITS = json.loads((Path(__file__).resolve().parents[2] / "zoart-a-project/src/data/project-limits.json").read_text())
 
 
 def tag_key(value: str) -> str:
@@ -88,9 +91,9 @@ class NormalizedTag(BaseModel):
 
 
 class ProjectInput(BaseModel):
-    title: str = Field(min_length=1, max_length=160)
+    title: str = Field(min_length=1, max_length=LIMITS["title"])
     author: str = Field(min_length=1, max_length=100)
-    description: str = Field(min_length=1, max_length=10000)
+    description: str = Field(min_length=1, max_length=LIMITS["description"])
     contact_info: str = Field(min_length=1, max_length=300)
     tags: list[str] = Field(min_length=1, max_length=MAX_TAGS)
     major_id: str | None = Field(default=None, max_length=100)
@@ -154,7 +157,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Retry-After"],
 )
 
@@ -166,6 +169,32 @@ def database():
     if not url or not key:
         raise HTTPException(503, "The project database is not configured yet.")
     return create_client(url, key)
+
+
+bearer = HTTPBearer(auto_error=False)
+
+
+def optional_user_id(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]) -> UUID | None:
+    if credentials is None:
+        return None
+    try:
+        result = database().auth.get_user(credentials.credentials)
+        if not result.user or getattr(result.user, "is_anonymous", False):
+            raise HTTPException(401, "Please sign in to continue.")
+        return UUID(str(result.user.id))
+    except HTTPException:
+        raise
+    except Exception as error:
+        status = getattr(error, "status", 0)
+        if isinstance(error, (httpx.RequestError, AuthRetryableError)) or (isinstance(status, int) and status >= 500):
+            raise HTTPException(503, "We couldn't check your account. Please try again shortly.") from error
+        raise HTTPException(401, "Your sign-in has expired. Please sign in again.", headers={"WWW-Authenticate": "Bearer"}) from error
+
+
+def required_user_id(user_id: Annotated[UUID | None, Depends(optional_user_id)]) -> UUID:
+    if user_id is None:
+        raise HTTPException(401, "Please sign in to continue.", headers={"WWW-Authenticate": "Bearer"})
+    return user_id
 
 
 def ask_gemini(instruction: str, payload: dict, schema: type[BaseModel]):
@@ -257,7 +286,7 @@ def majors():
 
 
 @app.post("/api/projects", status_code=201)
-def create_project(body: ProjectInput):
+def create_project(body: ProjectInput, user_id: Annotated[UUID, Depends(required_user_id)]):
     selected_ids = body.major_ids or ([body.major_id] if body.major_id else [])
     catalog = {item["id"]: item for item in get_majors()} if selected_ids else {}
     if any(major_id not in catalog for major_id in selected_ids):
@@ -265,9 +294,10 @@ def create_project(body: ProjectInput):
     try:
         if selected_ids:
             database().table("uci_majors").upsert([catalog[major_id] for major_id in selected_ids]).execute()
-        database().rpc("create_project_with_majors", {
+        database().rpc("create_owned_project", {
             "p_project": body.model_dump(exclude={"major_ids", "major_id"}),
             "p_major_ids": selected_ids,
+            "p_owner_id": str(user_id),
         }).execute()
     except HTTPException:
         raise
@@ -279,11 +309,10 @@ def create_project(body: ProjectInput):
 
 class LikesQuery(BaseModel):
     project_ids: list[UUID] = Field(max_length=200)
-    visitor_id: UUID
+    legacy_visitor_id: UUID | None = None
 
 
 class LikeInput(BaseModel):
-    visitor_id: UUID
     liked: bool
 
 
@@ -292,16 +321,26 @@ def visitor_hash(visitor_id: UUID) -> str:
 
 
 @app.post("/api/project_likes")
-def project_likes(body: LikesQuery):
+def project_likes(body: LikesQuery, user_id: Annotated[UUID | None, Depends(optional_user_id)]):
     if not body.project_ids:
         return {"likes": {}}
     try:
-        rows = database().rpc("get_project_likes", {
+        if user_id and body.legacy_visitor_id:
+            database().rpc("claim_browser_likes", {
+                "p_user_id": str(user_id), "p_visitor_hash": visitor_hash(body.legacy_visitor_id),
+            }).execute()
+        rows = database().rpc("get_account_project_likes", {
             "p_project_ids": [str(project_id) for project_id in body.project_ids],
-            "p_visitor_hash": visitor_hash(body.visitor_id),
+            "p_user_id": str(user_id) if user_id else None,
         }).execute().data
-        return {"likes": {row["project_id"]: {"count": row["like_count"], "liked": row["liked"]} for row in rows}}
+        return {"likes": {row["project_id"]: {"count": row["like_count"], "liked": row["liked"]} for row in rows}, "legacy_imported": bool(user_id and body.legacy_visitor_id)}
     except Exception as error:
+        if user_id is None and getattr(error, "code", None) == "PGRST202":
+            try:
+                rows = database().rpc("get_project_likes", {"p_project_ids": [str(project_id) for project_id in body.project_ids], "p_visitor_hash": "0" * 64}).execute().data
+                return {"likes": {row["project_id"]: {"count": row["like_count"], "liked": False} for row in rows}, "legacy_imported": False}
+            except Exception:
+                pass
         logger.exception("Could not load project likes")
         raise HTTPException(503, "Likes are unavailable. Check that the latest database migration is applied.") from error
 
@@ -322,11 +361,11 @@ def limit_likes(ip: str):
 
 
 @app.post("/api/projects/{project_id}/like")
-def set_like(project_id: UUID, body: LikeInput, request: Request):
-    limit_likes(request.client.host if request.client else "unknown")
+def set_like(project_id: UUID, body: LikeInput, request: Request, user_id: Annotated[UUID, Depends(required_user_id)]):
+    limit_likes(f"{request.client.host if request.client else 'unknown'}:{user_id}")
     try:
-        rows = database().rpc("set_project_like", {
-            "p_project_id": str(project_id), "p_visitor_hash": visitor_hash(body.visitor_id), "p_liked": body.liked,
+        rows = database().rpc("set_account_project_like", {
+            "p_project_id": str(project_id), "p_user_id": str(user_id), "p_liked": body.liked,
         }).execute().data
         if not rows:
             raise HTTPException(404, "This project is no longer available.")
@@ -336,3 +375,23 @@ def set_like(project_id: UUID, body: LikeInput, request: Request):
     except Exception as error:
         logger.exception("Could not save project like")
         raise HTTPException(503, "Couldn't save your like. Please try again.") from error
+
+
+class StatusInput(BaseModel):
+    status: Literal["active", "offline"]
+
+
+@app.post("/api/projects/{project_id}/status")
+def set_status(project_id: UUID, body: StatusInput, user_id: Annotated[UUID, Depends(required_user_id)]):
+    try:
+        result = database().rpc("set_owned_project_status", {
+            "p_project_id": str(project_id), "p_user_id": str(user_id), "p_status": body.status,
+        }).execute().data
+        if not result:
+            raise HTTPException(403, "Only the project creator can change its availability.")
+        return {"id": str(project_id), "status": result[0]["status"]}
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Could not change project status")
+        raise HTTPException(503, "Couldn't change the project's availability. Please try again.") from error

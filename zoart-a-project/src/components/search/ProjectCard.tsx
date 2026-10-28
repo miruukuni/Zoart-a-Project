@@ -1,68 +1,76 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { useRef, useState } from "react";
+import { Heart, Power } from "lucide-react";
 import type { Project } from "@/types/project";
 import { majorLabel } from "@/lib/majors";
 import type { LikeState } from "@/lib/project-likes";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { setProjectStatus } from "../../../lib/projects";
 import ProjectAge from "./ProjectAge";
 
 const chipColors = ["bg-[#FFB100]", "bg-[#F194B4]", "bg-[#00ADA5]"];
 
-export default function ProjectCard({ project, like, likesReady, liking, likeError, onLike }: {
+export default function ProjectCard({ project, like, likesReady, liking, likeError, onLike, onStatusChange }: {
   project: Project; like?: LikeState; likesReady: boolean; liking: boolean; likeError?: string; onLike: () => void;
+  onStatusChange: (id: string, status: "active" | "offline") => void;
 }) {
+  const { user, loading } = useAuth();
+  const [statusPending, setStatusPending] = useState(false);
+  const changing = useRef(false);
+  const [statusError, setStatusError] = useState("");
+  const offline = project.status !== "active";
+  const owned = !!user && project.owner_id === user.id;
   const tags = project.tags ?? [];
   const majors = project.project_majors?.flatMap(link => link.major ? [link.major] : []) ?? [];
   const displayedMajors = majors.length ? majors : project.major ? [project.major] : [];
-  const likeLabel = likesReady && like ? `${like.count} ${like.count === 1 ? "like" : "likes"}` : "Likes unavailable";
-
-  return (
-    <article className="relative flex min-w-0 flex-col">
-      <div className="group absolute -left-3 -top-4 z-10">
-        <button type="button" onClick={onLike} disabled={!likesReady || !like || liking} aria-label={`${like?.liked ? "Unlike" : "Like"} ${project.title || "project"}`} aria-pressed={like?.liked ?? false} aria-describedby={`likes-${project.id}`} aria-busy={liking} className={`grid size-12 place-items-center rounded-full border-2 border-[#111111] shadow-[2px_2px_0_#111111] transition-colors focus-visible:outline-4 focus-visible:outline-offset-4 disabled:cursor-wait ${like?.liked ? "bg-white text-[#CC404A]" : "bg-[#CC404A] text-white"}`}>
-          <Heart aria-hidden="true" className="size-6" fill={like?.liked ? "currentColor" : "none"} strokeWidth={2.5} />
-        </button>
-        <span id={`likes-${project.id}`} role="tooltip" className="pointer-events-none absolute left-0 top-full mt-2 whitespace-nowrap rounded-md bg-[#111111] px-3 py-2 font-[family-name:var(--font-search-inter)] text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{likeLabel}</span>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-b-[2rem] border-[3px] border-[#111111] bg-white">
-      <header className="flex min-h-20 min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-[#111111] bg-[#00ADA5] py-3 pl-9 pr-4">
-        <h2 className="min-w-0 flex-[1_1_12rem] text-[clamp(1.5rem,1.7vw,2rem)] font-normal leading-tight [overflow-wrap:anywhere]">
-          {project.title || "Untitled project"}
-        </h2>
-        <ProjectAge createdAt={project.created_at} />
+  const likeLabel = likesReady && like ? `${like.count} ${like.count === 1 ? "like" : "likes"}` : user ? "Likes unavailable" : "Sign in to like this project";
+  async function changeStatus() {
+    if (!owned || changing.current) return;
+    changing.current = true; setStatusPending(true); setStatusError("");
+    const next = offline ? "active" : "offline";
+    try {
+      await setProjectStatus(String(project.id), next);
+      onStatusChange(String(project.id), next);
+    } catch (error) { setStatusError(error instanceof Error ? error.message : "Couldn't update availability."); }
+    finally { changing.current = false; setStatusPending(false); }
+  }
+  return <article className="relative flex h-[40rem] min-w-0 flex-col">
+    <div className="group absolute -left-3 -top-4 z-10">
+      <button type="button" onClick={onLike} disabled={loading || liking || (!!user && (!likesReady || !like))} aria-label={`${like?.liked ? "Unlike" : "Like"} ${project.title || "project"}`} aria-pressed={like?.liked ?? false} aria-describedby={`likes-${project.id}`} aria-busy={liking} className={`grid size-12 place-items-center rounded-full border-2 border-[#111111] shadow-[2px_2px_0_#111111] transition-colors focus-visible:outline-4 focus-visible:outline-offset-4 disabled:cursor-wait ${like?.liked ? "bg-white text-[#CC404A]" : "bg-[#CC404A] text-white"}`}>
+        <Heart aria-hidden="true" className="size-6" fill={like?.liked ? "currentColor" : "none"} strokeWidth={2.5} />
+      </button>
+      <span id={`likes-${project.id}`} role="tooltip" className="pointer-events-none absolute left-0 top-full mt-2 whitespace-nowrap rounded-md bg-[#111111] px-3 py-2 font-[family-name:var(--font-search-inter)] text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{likeLabel}</span>
+    </div>
+    {owned && <div className="group absolute -right-3 -top-4 z-10">
+      <button type="button" aria-label={`Set ${project.title || "project"} ${offline ? "active" : "offline"}`} aria-pressed={!offline} aria-describedby={`status-${project.id}`} disabled={statusPending} onClick={() => void changeStatus()} className={`grid size-12 place-items-center rounded-full border-2 border-[#111111] shadow-[2px_2px_0_#111111] focus-visible:outline-4 focus-visible:outline-offset-4 disabled:opacity-60 ${offline ? "bg-[#72777b] text-white" : "bg-[#00ADA5] text-[#111111]"}`}><Power aria-hidden="true" className="size-6" /></button>
+      <span id={`status-${project.id}`} role="tooltip" className="pointer-events-none absolute right-0 top-full mt-2 whitespace-nowrap rounded-md bg-[#111111] px-3 py-2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{statusPending ? "Updating…" : offline ? "Set active" : "Set offline"}</span>
+    </div>}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-b-[2rem] border-[3px] border-[#111111] bg-white">
+      <header className={`flex h-28 shrink-0 flex-col justify-between gap-2 border-b-[3px] border-[#111111] py-3 pl-9 pr-5 ${offline ? "bg-[#72777b]" : "bg-[#00ADA5]"}`}>
+        <h2 title={project.title ?? undefined} className="line-clamp-2 min-w-0 text-2xl font-normal leading-7 [overflow-wrap:anywhere]">{project.title || "Untitled project"}</h2>
+        <div className="flex items-center justify-between gap-2"><span className={`rounded border border-[#111111] px-1.5 text-[10px] font-bold ${offline ? "bg-white text-[#333]" : "bg-[#FFEBC6] text-[#111111]"}`}>{offline ? "Offline" : "Active"}</span><ProjectAge createdAt={project.created_at} /></div>
       </header>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-2.5 sm:gap-4 sm:p-3">
-        {displayedMajors.length > 0 && <ul aria-label="UCI majors" className="flex flex-wrap gap-2">{displayedMajors.map(major => <li key={major.id} className="max-w-full rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1.5 font-[family-name:var(--font-search-inter)] text-xs font-bold [overflow-wrap:anywhere]">{majorLabel(major)}</li>)}</ul>}
-        {likeError && <p role="alert" className="text-xs font-bold text-[#a42130]">{likeError}</p>}
-        {tags.length > 0 && (
-          <ul aria-label="Project tags" className="flex min-w-0 flex-wrap gap-2 font-[family-name:var(--font-search-inter)]">
-            {tags.map((tag, index) => (
-              <li key={`${tag}-${index}`} className={`max-w-full rounded-md border-2 border-[#111111] px-2 py-1.5 text-xs font-bold leading-4 [overflow-wrap:anywhere] ${chipColors[index % chipColors.length]}`}>
-                {tag}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <section className="flex min-h-44 min-w-0 flex-1 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4">
-          <h3 className="mb-3 text-2xl font-normal leading-tight">About</h3>
-          <div role="region" aria-label="Project description" tabIndex={0} className="max-h-48 min-w-0 overflow-y-auto overscroll-contain rounded-sm font-[family-name:var(--font-search-inter)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111]">
-            <p className="mb-3 text-sm font-bold [overflow-wrap:anywhere]">By {project.author || "Anonymous"}</p>
-            <p className="whitespace-pre-wrap text-base leading-relaxed [overflow-wrap:anywhere]">
-              {project.description || "No description provided."}
-            </p>
+      <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[4.5rem_3.5rem_minmax(0,1fr)_6.5rem] gap-3 p-3">
+        <div role="region" aria-label="Project majors" tabIndex={0} className="min-h-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+          {displayedMajors.length ? <ul aria-label="UCI majors" className="flex flex-wrap content-start gap-1.5">{displayedMajors.map(major => <li key={major.id} className="max-w-full rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1 font-[family-name:var(--font-search-inter)] text-xs font-bold [overflow-wrap:anywhere]">{majorLabel(major)}</li>)}</ul> : <p className="py-1 text-xs text-[#555]">Open to all majors</p>}
+        </div>
+        <div role="region" aria-label="Project tags" tabIndex={0} className="min-h-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+          <ul className="flex flex-wrap content-start gap-1.5 font-[family-name:var(--font-search-inter)]">{tags.map((tag,index) => <li key={`${tag}-${index}`} className={`max-w-full rounded-md border-2 border-[#111111] px-2 py-1 text-xs font-bold leading-4 [overflow-wrap:anywhere] ${chipColors[index % chipColors.length]}`}>{tag}</li>)}</ul>
+        </div>
+        <section className="flex min-h-0 min-w-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4">
+          <h3 className="mb-2 shrink-0 text-2xl leading-tight">About</h3>
+          {(likeError || statusError) && <p role="alert" className="mb-2 max-h-14 shrink-0 overflow-auto text-xs font-bold text-[#8a1420]">{likeError || statusError}</p>}
+          <div role="region" aria-label="Project description" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-sm pr-1 font-[family-name:var(--font-search-inter)] [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#111111]">
+            <p className="mb-2 text-sm font-bold [overflow-wrap:anywhere]">By {project.author || "Anonymous"}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{project.description || "No description provided."}</p>
           </div>
         </section>
-
-        <section className="min-w-0 rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3 lg:px-5">
-          <h3 className="mb-2 text-2xl font-normal leading-tight">Contact</h3>
-          <p tabIndex={0} aria-label="Project contact information" className="max-h-24 min-w-0 overflow-y-auto overscroll-contain whitespace-pre-wrap rounded-sm font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111111]">
-            {project.contact_info || "No contact information provided."}
-          </p>
+        <section className="flex min-h-0 min-w-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
+          <h3 className="mb-1 shrink-0 text-2xl leading-tight">Contact</h3>
+          <p tabIndex={0} aria-label="Project contact information" className="min-h-0 flex-1 overflow-y-auto overscroll-contain whitespace-pre-wrap rounded-sm font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-[#111111]">{project.contact_info || "No contact information provided."}</p>
         </section>
       </div>
-      </div>
-    </article>
-  );
+    </div>
+  </article>;
 }
