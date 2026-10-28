@@ -1,29 +1,29 @@
 # Zoart-A-Project
 
 ## Things added since Zothacks:
-+Search bar taking one input at a time to not overload Gemini
-+No more tags duplication because of typo or abbreviation
-+Tags have a limit of 7 per project
-+Major selection(seperated from tags)
-+Page proportion should scale with screen resolution, and slightly more polished distributions
-+Button that redirects to home screen
-+Updated home screen to look less empty(Zoart buttons, slight animations)
-+Like button for projects
-+Creation time
++Search bar taking one input at a time to not overload Gemini\
++No more tags duplication because of typo or abbreviation\
++Tags have a limit of 7 per project\
++Major selection(seperated from tags)\
++Page proportion should scale with screen resolution, and slightly more polished distributions\
++Button that redirects to home screen\
++Updated home screen to look less empty(Zoart buttons, slight animations)\
++Like button for projects\
++Creation time\
 
 ## Things to be added:
--Sign in
--More equal proportion for project cards
--Redirect button for projects
--Active status for projects
--Manual filtering(active projects, old projects, projects you created)
--Sorting projects(Oldest, most popular, etc)
--Text limits
+-Sign in\
+-More equal proportion for project cards\
+-Redirect button for projects\
+-Active status for projects\
+-Manual filtering(active projects, old projects, projects you created)\
+-Sorting projects(Oldest, most popular, etc)\
+-Text limits\
 -More styling to make the website look less empty
 
 ## End goal: Huge hub
-^I think it's better to have a single universal website that contain all the goodies instead of having them all spread out
--Page for clubs(unrelated to projects)
+^I think it's better to have a single universal website that contain all the goodies instead of having them all spread out\
+-Page for clubs(unrelated to projects)\
 -Page for news(like career fair, networking events, etc)
 
 
