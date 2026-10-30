@@ -1,6 +1,6 @@
 import type { Project } from "@/types/project";
 
-export const categories = ["All projects", "Web Dev", "AI / ML", "Data Science", "Games", "Design"] as const;
+export const categories = ["All projects", "Web Dev", "AI / ML", "Data Science", "Games", "Design", "Robotics", "Cybersecurity", "Research", "Community"] as const;
 export type Category = (typeof categories)[number];
 
 // Ignore punctuation and spaces so AI/ML, AI / ML, and ai-ml agree.
@@ -14,6 +14,10 @@ const categoryTags: Record<Exclude<Category, "All projects">, string[]> = {
   "Data Science": ["datascience", "dataanalytics", "dataanalysis", "datavisualization"],
   Games: ["games", "game", "gaming", "gamedev", "gamedevelopment", "unity", "unreal", "godot"],
   Design: ["design", "ui", "ux", "uiux", "uidesign", "uxdesign", "figma", "graphicdesign"],
+  Robotics: ["robotics", "robot", "robots"],
+  Cybersecurity: ["cybersecurity", "security", "infosec"],
+  Research: ["research", "academicresearch", "scientificresearch"],
+  Community: ["community", "volunteering", "socialimpact", "communityservice"],
 };
 
 export function filterProjects(projects: Project[], query: string, category: Category): Project[] {

@@ -9,6 +9,8 @@ created for ZotHacks, the project is growing into a student collaboration hub.
 ## Current features
 
 - Responsive home and project pages with the Zoart mascot and cream background.
+- A project-page mascot reminder after 20 seconds, then every 90 seconds, with
+  three editable messages, click/10-second dismissal and a sound control.
 - Natural-language search: Gemini translates a prompt into approved tag filters.
   Search never sends individual projects or descriptions to Gemini.
 - Shared tag catalog with aliases and typo matching; up to **7 tags** per post.
@@ -160,6 +162,7 @@ From `zoart-a-project/`:
 npm run lint
 npx tsc --noEmit
 node --test src/lib/filter-projects.test.mjs src/lib/project-order.test.mjs
+node --test src/lib/mascot-reminder.test.mjs
 npm run build
 ```
 
@@ -170,8 +173,6 @@ HTTPS and the deployed callback/origin settings.
 ## Next improvements
 
 - Replace placeholder click sounds, home-page descriptions and the sign-in GIF.
-- Expand the reviewed tag catalog and evaluate search/moderation with real examples.
 - Add a full project page and owner editing/deletion controls.
 - Add reporting and human review for moderation mistakes or missed abuse.
-- Add the project-discovery mascot reminder, with an accessible sound control.
 - Explore dedicated club and student-event/news pages as the hub grows.

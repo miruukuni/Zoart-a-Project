@@ -22,7 +22,7 @@ test("search matches title, description, author, and tags without case sensitivi
 
 test("categories normalize common punctuation, spacing, and aliases", () => {
   assert.equal(normalizeTag("AI / ML"), normalizeTag("AI/ML"));
-  const aliases = { "Web Dev": "web-development", "AI / ML": "AI / ML", "Data Science": "data_science", Games: "game dev", Design: "UI/UX" };
+  const aliases = { "Web Dev": "web-development", "AI / ML": "AI / ML", "Data Science": "data_science", Games: "game dev", Design: "UI/UX", Robotics: "robots", Cybersecurity: "infosec", Research: "scientific research", Community: "volunteering" };
   for (const [category, tag] of Object.entries(aliases)) {
     const tagged = [{ ...projects[0], tags: [tag] }];
     assert.equal(filterProjects(tagged, "", category).length, 1);

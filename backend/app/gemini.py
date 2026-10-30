@@ -183,6 +183,12 @@ def database():
 bearer = HTTPBearer(auto_error=False)
 
 
+@app.get("/health")
+def health():
+    """Hosting readiness probe; no external calls or credentials in the response."""
+    return {"ok": True}
+
+
 def optional_user_id(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]) -> UUID | None:
     if credentials is None:
         return None

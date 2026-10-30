@@ -27,7 +27,7 @@ const TODOS = [
 ];
 
 const SLIDE_SECONDS = 1.8;
-const ZOART_SOUND = "/audio/testinganother.mp3";
+const ZOART_SOUND = "/audio/zoart_sfx.mp3";
 
 export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);

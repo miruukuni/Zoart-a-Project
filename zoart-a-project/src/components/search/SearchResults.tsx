@@ -17,6 +17,7 @@ import AccountButton from "@/components/auth/AccountButton";
 import ProjectViewFilter, { type ProjectView } from "./ProjectViewFilter";
 import { useSearchParams } from "next/navigation";
 import ProjectBrowseControls from "./ProjectBrowseControls";
+import ProjectMascotReminder from "./ProjectMascotReminder";
 import { projectSort } from "@/lib/project-order";
 import { majorLabel, projectHasMajor, projectMajors, type ProjectMajor } from "@/lib/majors";
 
@@ -157,6 +158,7 @@ function search(value: string) {
         </>}
       </section>
       <UploadProjectModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSubmit={upload} />
+      <ProjectMascotReminder paused={uploadOpen} />
     </main>
   );
 }

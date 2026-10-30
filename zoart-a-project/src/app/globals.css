@@ -38,3 +38,12 @@ body {
   align-items: stretch;
   gap: clamp(1.25rem, 2.5vw, 2.5rem);
 }
+
+@keyframes project-reminder-enter {
+  from { opacity: 0; transform: translateX(-1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .project-reminder-enter { animation: project-reminder-enter 220ms ease-out; }
+}
