@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import Icon from "../../../assets/placeholder.gif";
+import Icon from "../../../assets/zoartlogo.png";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { googleAvailable, safeReturnPath, startGoogleSignIn, googleSignInError } from "@/lib/auth-flow";
 
