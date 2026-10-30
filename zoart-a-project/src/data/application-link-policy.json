@@ -1,0 +1,6 @@
+[
+  { "host": "uci.edu", "subdomains": true, "pathPrefix": "/" },
+  { "host": "forms.gle", "subdomains": false, "pathPrefix": "/" },
+  { "host": "docs.google.com", "subdomains": false, "pathPrefix": "/forms/" },
+  { "host": "github.com", "subdomains": false, "pathPrefix": "/" }
+]

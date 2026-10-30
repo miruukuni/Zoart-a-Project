@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload, House } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import UploadProjectModal from "@/components/upload-project/UploadProjectModal";
 import SearchBar from "./SearchBar";
 import CategoryFilters from "./CategoryFilters";
 import ProjectGrid from "./ProjectGrid";
-import { createProject, fetchProjects, fetchProjectsByTags } from "../../../lib/projects";
+import { createProject, fetchProjects, searchProjects } from "../../../lib/projects";
 import { api } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AccountButton from "@/components/auth/AccountButton";
@@ -26,12 +26,12 @@ export default function SearchResults({ query }: { query: string }) {
   const sort = projectSort(params.get("sort"));
   const major = params.get("major") ?? "";
   const view: ProjectView = params.get("view") === "mine" ? "mine" : params.get("view") === "offline" ? "offline" : "active";
-  const searchTags = useRef<string[]>([]);
   const router = useRouter();
   const [navigating, startTransition] = useTransition();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchNotice, setSearchNotice] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [category, setCategory] = useState<Category>("All projects");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -53,8 +53,8 @@ async function reload() {
   setError("");
 
   try {
-    const data = query ? await fetchProjectsByTags(searchTags.current) : await fetchProjects();
-    setProjects(data);
+    const result = query ? await searchProjects(query) : { projects: await fetchProjects(), notice: "" };
+    setProjects(result.projects); setSearchNotice(result.notice);
   } catch (error) {
     setError(error instanceof Error ? error.message : "Could not load projects.");
   } finally {
@@ -67,28 +67,19 @@ useEffect(() => {
 
   async function load() {
     if (!query.trim()) {
-      searchTags.current = [];
-      return fetchProjects(controller.signal);
+      return { projects: await fetchProjects(controller.signal), notice: "" };
     }
-    const result = await api<{ tags: { tag: string }[] }>("/api/gemini_search", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_query: query }),
-      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(55000)]),
-    });
-    const tags = [...new Set(result.tags.map(item => item.tag))];
-    if (controller.signal.aborted) return [];
-    searchTags.current = tags;
-    return fetchProjectsByTags(tags, controller.signal);
+    return searchProjects(query, controller.signal);
   }
 
   Promise.resolve().then(() => {
-    if (controller.signal.aborted) return [];
+    if (controller.signal.aborted) return;
     setLoading(true);
     setError("");
     return load();
   })
     .then((data) => {
-      if (!controller.signal.aborted) setProjects(data);
+      if (!controller.signal.aborted && data) { setProjects(data.projects); setSearchNotice(data.notice); }
     })
     .catch((error) => {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Could not load projects.");
@@ -154,6 +145,7 @@ function search(value: string) {
             <button type="button" onClick={() => { setLoading(true); setError(""); setAttempt(previous => previous + 1); }} className="mt-5 rounded-xl border-4 border-[#111111] bg-[#F194B4] px-5 py-3 font-bold focus-visible:outline-4 focus-visible:outline-offset-4">Try again</button>
           </div>
         ) : <>
+          {searchNotice && <p role="status" className="mb-4 rounded-xl border-2 border-[#111111] bg-white p-3 text-sm">{searchNotice}</p>}
           <p role="status" className="mb-5 min-w-0 font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere]">{visibleProjects.length} {visibleProjects.length === 1 ? "project" : "projects"}{query && <> matching “<span>{query}</span>”</>}{category !== "All projects" && ` in ${category}`}{major && ` for ${selectedMajor ? majorLabel(selectedMajor) : "the selected major"}`}</p>
           {visibleProjects.length ? <ProjectGrid projects={visibleProjects} sort={sort} onStatusChange={(id, status) => setProjects(previous => previous.map(project => String(project.id) === id ? { ...project, status } : project))} /> : (
             <div className="rounded-3xl border-4 border-[#111111] bg-white p-8">

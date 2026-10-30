@@ -8,7 +8,7 @@ import type { LikeState } from "@/lib/project-likes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { setProjectStatus } from "../../../lib/projects";
 import ProjectAge from "./ProjectAge";
-import { applicationUrl } from "@/lib/application-url";
+import ApplicationLink from "./ApplicationLink";
 
 const chipColors = ["bg-[#FFB100]", "bg-[#F194B4]", "bg-[#00ADA5]"];
 
@@ -23,7 +23,6 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
   const offline = project.status !== "active";
   const owned = !!user && project.owner_id === user.id;
   const tags = project.tags ?? [];
-  const applyUrl = applicationUrl(project.application_url);
   const displayedMajors = projectMajors(project);
   const likeLabel = likesReady && like ? `${like.count} ${like.count === 1 ? "like" : "likes"}` : user ? "Likes unavailable" : "Sign in to like this project";
   async function changeStatus() {
@@ -53,12 +52,12 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
         <div className="flex items-center justify-between gap-2"><span className={`rounded border border-[#111111] px-1.5 text-[10px] font-bold ${offline ? "bg-white text-[#333]" : "bg-[#FFEBC6] text-[#111111]"}`}>{offline ? "Offline" : "Active"}</span><ProjectAge createdAt={project.created_at} /></div>
       </header>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
-        <div role="region" aria-label="Project majors" tabIndex={0} className="max-h-[4.5rem] min-h-0 shrink-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
-          {displayedMajors.length ? <ul aria-label="UCI majors" className="flex flex-wrap content-start gap-1.5">{displayedMajors.map(major => <li key={major.id} className="max-w-full rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1 font-[family-name:var(--font-search-inter)] text-xs font-bold [overflow-wrap:anywhere]">{majorLabel(major)}</li>)}</ul> : <p className="py-1 text-xs text-[#555]">Open to all majors</p>}
+        <div role="region" aria-label="Project majors" tabIndex={0} className="h-11 min-h-0 shrink-0 overflow-x-auto overflow-y-hidden overscroll-contain rounded-md p-0.5 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+          {displayedMajors.length ? <ul aria-label="UCI majors" className="flex w-max min-w-full gap-1.5">{displayedMajors.map(major => <li key={major.id} className="shrink-0 whitespace-nowrap rounded-md border-2 border-[#111111] bg-[#ffebc4] px-2 py-1 font-[family-name:var(--font-search-inter)] text-xs font-bold leading-4">{majorLabel(major)}</li>)}</ul> : <p className="py-1 text-xs text-[#555]">Open to all majors</p>}
         </div>
-        {tags.length > 0 && <div role="region" aria-label="Project tags" tabIndex={0} className="max-h-14 min-h-0 shrink-0 overflow-y-auto overscroll-contain rounded-md p-0.5 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
-          <ul className="flex flex-wrap content-start gap-1.5 font-[family-name:var(--font-search-inter)]">{tags.map((tag,index) => <li key={`${tag}-${index}`} className={`max-w-full rounded-md border-2 border-[#111111] px-2 py-1 text-xs font-bold leading-4 [overflow-wrap:anywhere] ${chipColors[index % chipColors.length]}`}>{tag}</li>)}</ul>
-        </div>}
+        <div role="region" aria-label="Project tags" tabIndex={0} className="h-11 min-h-0 shrink-0 overflow-x-auto overflow-y-hidden overscroll-contain rounded-md p-0.5 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[#00ADA5]">
+          {tags.length ? <ul className="flex w-max min-w-full gap-1.5 font-[family-name:var(--font-search-inter)]">{tags.map((tag,index) => <li key={`${tag}-${index}`} className={`shrink-0 whitespace-nowrap rounded-md border-2 border-[#111111] px-2 py-1 text-xs font-bold leading-4 ${chipColors[index % chipColors.length]}`}>{tag}</li>)}</ul> : <p className="py-1 text-xs text-[#555]">No tags</p>}
+        </div>
         <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4">
           <h3 className="mb-2 shrink-0 text-2xl leading-tight">About</h3>
           {(likeError || statusError) && <p role="alert" className="mb-2 max-h-14 shrink-0 overflow-auto text-xs font-bold text-[#8a1420]">{likeError || statusError}</p>}
@@ -70,7 +69,7 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
         <section className="flex h-[6.5rem] min-h-0 min-w-0 shrink-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
           <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-2xl leading-tight">Contact</h3>
-            {applyUrl && <a href={applyUrl} target="_blank" rel="noopener noreferrer" aria-label={`Apply to ${project.title || "project"} (opens in a new tab)`} className="shrink-0 rounded-lg border-2 border-[#111111] bg-[#F194B4] px-3 py-1 font-[family-name:var(--font-search-inter)] text-sm font-bold shadow-[2px_2px_0_#111111] hover:bg-white focus-visible:outline-4 focus-visible:outline-offset-2">Apply ↗</a>}
+            <ApplicationLink url={project.application_url} title={project.title} />
           </div>
           <p tabIndex={0} aria-label="Project contact information" className="min-h-0 flex-1 overflow-y-auto overscroll-contain whitespace-pre-wrap rounded-sm font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-[#111111]">{project.contact_info || "No contact information provided."}</p>
         </section>

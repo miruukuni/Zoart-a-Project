@@ -9,7 +9,7 @@ import MajorPicker, { type Major } from "./MajorPicker";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { TITLE_LIMIT, DESCRIPTION_LIMIT, APPLICATION_URL_LIMIT } from "@/lib/project-limits";
-import { applicationUrl } from "@/lib/application-url";
+import { applicationUrl, APPLICATION_LINK_HELP } from "@/lib/application-url";
 
 
 export type UploadProjectModalProps = {
@@ -189,7 +189,7 @@ function OpenUploadProjectModal({
     if (!input.contact_info)
       nextErrors.contact_info = "Enter an email address or contact handle.";
     if (rawApplicationUrl && !applicationUrl(rawApplicationUrl))
-      nextErrors.application_url = "Enter a full http:// or https:// web address, without spaces or a username/password.";
+      nextErrors.application_url = APPLICATION_LINK_HELP;
     setErrors(nextErrors);
     const firstError = Object.keys(nextErrors)[0];
     if (firstError) {
@@ -550,8 +550,8 @@ function OpenUploadProjectModal({
               </div>
               <div>
                 <label htmlFor={`${id}-application_url`} className="mb-1 block text-[13px] font-bold leading-[18px]">Application / project link (optional)</label>
-                <input id={`${id}-application_url`} name="application_url" type="url" inputMode="url" autoComplete="url" maxLength={APPLICATION_URL_LIMIT} value={values.application_url ?? ""} onChange={event => update("application_url", event.target.value)} placeholder="https://example.com/join" className={inputClass} aria-invalid={!!errors.application_url} aria-describedby={`${id}-application-note${errors.application_url ? ` ${id}-application_url-error` : ""}`} />
-                <p id={`${id}-application-note`} className="mt-2 text-[11px] leading-4">Add a sign-up form or project page. This becomes an Apply button next to Contact and opens in a new tab.</p>
+                <input id={`${id}-application_url`} name="application_url" type="url" inputMode="url" autoComplete="url" maxLength={APPLICATION_URL_LIMIT} value={values.application_url ?? ""} onChange={event => update("application_url", event.target.value)} placeholder="https://forms.gle/your-form" className={inputClass} aria-invalid={!!errors.application_url} aria-describedby={`${id}-application-note${errors.application_url ? ` ${id}-application_url-error` : ""}`} />
+                <p id={`${id}-application-note`} className="mt-2 text-[11px] leading-4">{APPLICATION_LINK_HELP} The Apply button shows the destination before opening it.</p>
                 {error("application_url")}
               </div>
             </fieldset>
@@ -564,8 +564,10 @@ function OpenUploadProjectModal({
                 Your input is still here. Please try again.
               </p>
             )}
-            <p role="status" className="sr-only">
-              {status === "pending" ? "Submitting project. Please wait." : ""}
+            <p className="mt-3 text-xs">You can have up to 4 active projects. Set one offline in My projects before adding another.</p>
+            <p className="mt-2 text-xs">Before publishing, Gemini checks your title and description for inappropriate content. These fields are sent to Google; keep personal or sensitive details out of them.</p>
+            <p role="status" className={status === "pending" ? "mt-2 text-xs font-bold" : "sr-only"}>
+              {status === "pending" ? (demo ? "Submitting demo project…" : "Checking your project before publishing. Please wait…") : ""}
             </p>
             <div className="mt-4 flex items-stretch gap-2.5">
               <button
@@ -580,7 +582,7 @@ function OpenUploadProjectModal({
                 disabled={status === "pending" || normalizing}
                 className={`${buttonClass} flex-1 bg-[var(--sea-teal,#00ADA5)]`}
               >
-                {status === "pending" ? "Submitting…" : "Create project →"}
+                {status === "pending" ? (demo ? "Submitting…" : "Checking & publishing…") : "Create project →"}
               </button>
             </div>
           </form>

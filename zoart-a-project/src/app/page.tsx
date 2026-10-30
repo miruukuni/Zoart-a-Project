@@ -20,11 +20,10 @@ const ZOARTS = [
 ];
 
 const TODOS = [
-  { label: "Job 1", bg: "#8DB4FF" },
-  { label: "Job 2", bg: "#F194B4" },
-  { label: "Job 3", bg: "#8368FF" },
-  { label: "Job 4", bg: "#00ADA5" },
-  { label: "Job 5", bg: "#FF676D" },
+  { label: "'Learn more' page for projects", bg: "#F194B4" },
+  { label: "Settings page for projects", bg: "#8DB4FF" },
+  { label: "Page dedicated for club and organizations", bg: "#69be8a" },
+  { label: "Page dedicated for news and opportunities", bg: "#ffc295" },
 ];
 
 const SLIDE_SECONDS = 1.8;
@@ -91,7 +90,7 @@ export default function Home() {
           animation: mascot-slide ${SLIDE_SECONDS}s cubic-bezier(.22,.8,.3,1) forwards;
         }
         .mascot-bubble {
-          transform-origin: bottom left;
+          transform-origin: bottom center;
           animation: bubble-pop 0.4s cubic-bezier(.34,1.56,.64,1) ${SLIDE_SECONDS}s both;
         }
         @media (prefers-reduced-motion: reduce) {
@@ -131,7 +130,7 @@ export default function Home() {
         <article className="flex min-w-0 flex-col overflow-hidden rounded-[2rem] border-[3px] border-[#111111] bg-white">
           <header className="flex min-h-16 min-w-0 items-center border-b-[3px] border-[#111111] bg-[#00ADA5] px-3.5 py-3 sm:px-4">
             <h2 className="min-w-0 text-[32px] font-normal leading-tight [overflow-wrap:anywhere] lg:text-4xl">
-              About
+              What is this you might be wondering?
             </h2>
           </header>
 
@@ -148,7 +147,7 @@ export default function Home() {
             <section className="min-w-0 rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] p-4 lg:p-5">
               <h3 className="mb-3 text-[28px] font-normal leading-tight sm:text-[32px]">Is your resume kinda homeless?</h3>
               <p className="max-w-[85ch] font-[family-name:var(--font-search-inter)] text-base leading-relaxed [overflow-wrap:anywhere] lg:text-lg">
-                Zoart-A-Project matches students with projects worth building. Browse what people
+                Zoart A Project matches students with projects worth building. Browse what people
                 are working on, join a team that needs your skills, or post your own idea and
                 find collaborators. Real projects, real teammates, real stuff to put on your
                 resume. No classroom required.
@@ -181,12 +180,14 @@ export default function Home() {
       <Link
         href={user ? "/search?view=mine" : "/sign-in"}
         aria-label={user ? "See your projects" : "Sign in with the Zoart mascot"}
-        className="mascot-slide fixed bottom-12 left-0 z-10 block w-40 rounded-2xl focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#CC404A] sm:bottom-16 sm:w-56 lg:w-64"
+        className="mascot-slide fixed bottom-4 left-0 z-10 block w-40 rounded-2xl focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#CC404A] sm:bottom-6 sm:w-56 lg:bottom-4 lg:w-64"
       >
-        <div className="mascot-bubble absolute bottom-full right-2 mb-3 w-max max-w-[min(16rem,calc(100vw-2rem))] rounded-2xl border-[3px] border-[#111111] bg-white px-4 py-2 text-xl shadow-[4px_4px_0_#111111] sm:text-2xl">
-          {user ? mascotMessage : "sign in"}
-          {/* bubble tail */}
-          <span className="absolute -bottom-[10px] left-6 h-4 w-4 rotate-45 border-b-[3px] border-r-[3px] border-[#111111] bg-white" />
+        <div className="absolute bottom-full left-[65%] -mb-8 w-max max-w-[min(16rem,calc(100vw-2rem))] -translate-x-1/2">
+          <div className="mascot-bubble relative rounded-2xl border-[3px] border-[#111111] bg-white px-4 py-2 text-xl shadow-[4px_4px_0_#111111] sm:text-2xl">
+            {user ? mascotMessage : "sign in"}
+            {/* bubble tail */}
+            <span className="absolute -bottom-[10px] left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b-[3px] border-r-[3px] border-[#111111] bg-white" />
+          </div>
         </div>
         <Image src={mascot} alt="" className="h-auto w-full" />
       </Link>

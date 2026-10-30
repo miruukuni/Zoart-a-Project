@@ -24,7 +24,7 @@ export default function SearchBar({ query, loading, onSearch }: {
         <Search aria-hidden="true" className="size-6 sm:size-7" strokeWidth={2} />
       </button>
       <label htmlFor="project-search" className="sr-only">Describe the projects you want to find</label>
-      <input id="project-search" type="search" name="q" maxLength={1000} value={value} onChange={event => setValue(event.target.value)} placeholder={loading ? "Making magic happen..." : "Try searching: 'I want to build a rocket'"} className="w-full min-w-0 flex-1 rounded-r-full bg-white px-3 text-base font-normal text-[#111111] placeholder:text-[#555] focus-visible:outline-4 focus-visible:-outline-offset-8 focus-visible:outline-[#00ADA5] sm:px-5 sm:text-xl lg:text-2xl" />
+      <input id="project-search" type="search" name="q" maxLength={1000} value={value} onChange={event => setValue(event.target.value)} placeholder={loading ? "Any minute now..." : "Try searching: 'I want to build a rocket'     /     Work in progress, search may not be fully reliable"} className="w-full min-w-0 flex-1 rounded-r-full bg-white px-3 text-base font-normal text-[#111111] placeholder:text-[#555] focus-visible:outline-4 focus-visible:-outline-offset-8 focus-visible:outline-[#00ADA5] sm:px-5 sm:text-xl lg:text-2xl" />
     </form>
   );
 }

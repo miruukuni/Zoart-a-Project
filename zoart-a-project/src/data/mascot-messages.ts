@@ -1,8 +1,8 @@
 // randomized messages for the mascot
 export const MASCOT_MESSAGES = [
-  "Ready to build?",
-  "Sup.",
-  "Make something cool!",
-  "Got a project idea?",
-  "Let's Zoart!",
+  "Is it time for the ultra cool super mega amazing sugoi next project?",
+  "Sup",
+  "I'm Zoarting it.",
+  "WE yes WE are gonna Zoart it.",
+  "The Zoart is real.",
 ] as const;

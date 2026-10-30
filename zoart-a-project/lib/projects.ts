@@ -37,6 +37,14 @@ export async function fetchProjects(signal?: AbortSignal): Promise<Project[]> {
   return readProjects(undefined, signal);
 }
 
+export function searchProjects(query: string, signal?: AbortSignal): Promise<{ projects: Project[]; mode: string; notice: string }> {
+  return api("/api/search_projects", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_query: query }),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(55000)]) : AbortSignal.timeout(55000),
+  });
+}
+
 export async function createProject(
   input: CreateProjectInput,
 ): Promise<void> {
@@ -45,6 +53,8 @@ export async function createProject(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
     auth: "required",
+    // Includes the initial major-catalog lookup and a bounded content review.
+    signal: AbortSignal.timeout(90000),
   });
 }
 
