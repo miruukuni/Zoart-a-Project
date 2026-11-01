@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Grandstander, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import SiteAnalytics from "@/components/SiteAnalytics";
 
 const grandstander = Grandstander({
   subsets: ["latin"],
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${grandstander.className} ${inter.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AuthProvider>{children}</AuthProvider></body>
+      <body className="min-h-full flex flex-col"><AuthProvider>{children}</AuthProvider><SiteAnalytics /></body>
     </html>
   );
 }
