@@ -24,7 +24,7 @@ const TODOS = [
   { label: "More setting configurations for projects you own", bg: "#8DB4FF" },
   { label: "Page dedicated for club and organizations", bg: "#69be8a" },
   { label: "Bulletin board for news and opportunities", bg: "#ffc295" },
-  { label: "Dark mode, seasonal themes, holiday decorations", bg: "#f9c7d5" },
+  { label: "Dark mode, seasonal themes, holiday decorations", bg: "#F9C3D2" },
 
 ];
 
