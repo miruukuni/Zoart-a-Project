@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { sortProjects, type ProjectSort } from "@/lib/project-order";
 
-export default function ProjectGrid({ projects, sort = "most-liked", onStatusChange }: { projects: Project[]; sort?: ProjectSort; onStatusChange: (id: string, status: "active" | "offline") => void }) {
+export default function ProjectGrid({ projects, sort = "most-liked", onStatusChange, onProjectChange }: { projects: Project[]; sort?: ProjectSort; onStatusChange: (id: string, status: "active" | "offline") => void; onProjectChange: () => Promise<void> }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -74,7 +74,7 @@ export default function ProjectGrid({ projects, sort = "most-liked", onStatusCha
     <>
       {error && <p role="status" className="mb-6 text-sm">{error}{popularitySort && " Showing newest projects until popularity is available."} <button type="button" className="font-bold underline" onClick={() => setAttempt(value => value + 1)}>Retry</button></p>}
       {loadingPopularity ? <p role="status" className="rounded-3xl border-[3px] border-[#111111] bg-white p-6">Loading project popularity…</p> : <div className="project-grid w-full min-w-0 pt-3">
-        {orderedProjects.map(project => <ProjectCard key={`${identity}-${project.id}`} project={project} like={loaded === loadedKey ? likes[String(project.id)] : undefined} likesReady={likesReady} liking={pendingIds.includes(`${identity}:${project.id}`)} likeError={likeErrors[`${identity}:${project.id}`]} onLike={() => void toggle(String(project.id))} onStatusChange={onStatusChange} />)}
+        {orderedProjects.map(project => <ProjectCard key={`${identity}-${project.id}`} project={project} like={loaded === loadedKey ? likes[String(project.id)] : undefined} likesReady={likesReady} liking={pendingIds.includes(`${identity}:${project.id}`)} likeError={likeErrors[`${identity}:${project.id}`]} onLike={() => void toggle(String(project.id))} onStatusChange={onStatusChange} onProjectChange={onProjectChange} />)}
       </div>}
     </>
   );

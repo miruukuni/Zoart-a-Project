@@ -42,7 +42,7 @@ export default function SignInPage() {
     <div className="mx-auto grid w-full max-w-5xl flex-1 items-center gap-8 px-5 pb-12 md:grid-cols-[1fr_1.2fr]">
       <div className="mx-auto w-40 md:w-full md:max-w-80"><Image src={Icon} alt="Your Zoart anteater" priority className="h-auto w-full" sizes="(max-width: 767px) 160px, 320px" /></div>
       <section className="overflow-hidden rounded-[2rem] border-[3px] border-[#111111] bg-white shadow-[7px_7px_0_#111111]">
-        <header className="border-b-[3px] border-[#111111] bg-[#00ADA5] p-5"><h1 className="text-3xl font-bold">Fill em resumes up.</h1></header>
+        <header className="border-b-[3px] border-[#111111] bg-[#00ADA5] p-5"><h1 className="text-3xl font-bold">You get a project! You get a project! Everybody gets a project!</h1></header>
         <div className="space-y-5 p-5 sm:p-7">
           <p>Sign in to share projects, save your likes, and manage your team’s availability.</p>
           {loading ? <p role="status">Checking your account…</p> : user ? <div className="space-y-4"><p>You’re signed in as {user.email}.</p><button type="button" className={`${button} bg-[#FFB100]`} onClick={() => window.location.assign(nextPath())}>Continue to projects →</button></div> : <>

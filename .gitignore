@@ -6,6 +6,7 @@
 # Dependencies and Python caches
 node_modules/
 .tools/
+supabase/.temp/
 *.tsbuildinfo
 .venv/
 venv/

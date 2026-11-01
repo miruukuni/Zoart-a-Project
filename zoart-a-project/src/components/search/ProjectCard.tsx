@@ -9,12 +9,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { setProjectStatus } from "../../../lib/projects";
 import ProjectAge from "./ProjectAge";
 import ApplicationLink from "./ApplicationLink";
+import ProjectActions from "./ProjectActions";
 
 const chipColors = ["bg-[#FFB100]", "bg-[#F194B4]", "bg-[#00ADA5]"];
 
-export default function ProjectCard({ project, like, likesReady, liking, likeError, onLike, onStatusChange }: {
+export default function ProjectCard({ project, like, likesReady, liking, likeError, onLike, onStatusChange, onProjectChange }: {
   project: Project; like?: LikeState; likesReady: boolean; liking: boolean; likeError?: string; onLike: () => void;
   onStatusChange: (id: string, status: "active" | "offline") => void;
+  onProjectChange: () => Promise<void>;
 }) {
   const { user, loading } = useAuth();
   const [statusPending, setStatusPending] = useState(false);
@@ -69,7 +71,7 @@ export default function ProjectCard({ project, like, likesReady, liking, likeErr
         <section className="flex h-[6.5rem] min-h-0 min-w-0 shrink-0 flex-col rounded-3xl border-[3px] border-[#111111] bg-[#FFB100] px-4 py-3">
           <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-2xl leading-tight">Contact</h3>
-            <ApplicationLink url={project.application_url} title={project.title} />
+            <div className="flex shrink-0 items-center gap-2"><ProjectActions project={project} onChanged={onProjectChange} /><ApplicationLink url={project.application_url} title={project.title} /></div>
           </div>
           <p tabIndex={0} aria-label="Project contact information" className="min-h-0 flex-1 overflow-y-auto overscroll-contain whitespace-pre-wrap rounded-sm font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-[#111111]">{project.contact_info || "No contact information provided."}</p>
         </section>

@@ -434,3 +434,89 @@ select
   has_table_privilege('anon', 'public.projects', 'select') as public_projects_readable,
   has_table_privilege('anon', 'public.projects', 'insert') as public_project_writes_should_be_false,
   has_table_privilege('anon', 'public.project_likes', 'select') as public_visitor_reads_should_be_false;
+
+-- PROJECT MANAGEMENT AND REPORTS
+-- Owner-only settings and private administrator report inbox.
+begin;
+
+create table if not exists public.project_reports (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id) on delete set null,
+  project_title text not null,
+  reporter_id uuid references auth.users(id) on delete set null,
+  reason text not null check (char_length(btrim(reason)) between 10 and 2000),
+  status text not null default 'pending' check (status in ('pending','reviewed','dismissed')),
+  created_at timestamptz not null default now(),
+  unique(project_id,reporter_id)
+);
+alter table public.project_reports enable row level security;
+revoke all on public.project_reports from public,anon,authenticated;
+grant select,insert,update on public.project_reports to service_role;
+create index if not exists project_reports_reporter_created_idx on public.project_reports(reporter_id,created_at desc);
+create index if not exists project_reports_pending_idx on public.project_reports(created_at) where status='pending';
+
+create or replace function public.update_owned_project(p_project_id uuid,p_user_id uuid,p_project jsonb,p_major_ids text[])
+returns uuid language plpgsql security invoker set search_path='' as $$
+begin
+  perform 1 from public.projects where id=p_project_id and owner_id=p_user_id for update;
+  if not found or p_user_id is null then return null; end if;
+  if coalesce(char_length(btrim(p_project->>'title')),0) not between 1 and 80
+    or coalesce(char_length(btrim(p_project->>'description')),0) not between 1 and 2000
+    or coalesce(char_length(btrim(p_project->>'author')),0) not between 1 and 100
+    or coalesce(char_length(btrim(p_project->>'contact_info')),0) not between 1 and 300 then
+    raise exception 'Invalid project fields';
+  end if;
+  update public.projects set title=btrim(p_project->>'title'),author=btrim(p_project->>'author'),
+    description=btrim(p_project->>'description'),contact_info=btrim(p_project->>'contact_info'),
+    application_url=nullif(btrim(p_project->>'application_url'),''),
+    tags=array(select jsonb_array_elements_text(p_project->'tags')),
+    major_id=p_major_ids[1]
+    where id=p_project_id and owner_id=p_user_id;
+  delete from public.project_majors where project_id=p_project_id;
+  insert into public.project_majors(project_id,major_id)
+    select p_project_id,major_id from (select distinct unnest(p_major_ids) major_id) selected;
+  return p_project_id;
+end $$;
+
+create or replace function public.delete_owned_project(p_project_id uuid,p_user_id uuid)
+returns boolean language plpgsql security invoker set search_path='' as $$
+begin
+  if p_user_id is null then return false; end if;
+  delete from public.projects where id=p_project_id and owner_id=p_user_id;
+  return found;
+end $$;
+
+create or replace function public.report_project(p_project_id uuid,p_user_id uuid,p_reason text)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare listing public.projects%rowtype;
+begin
+  if p_user_id is null or coalesce(char_length(btrim(p_reason)),0) not between 10 and 2000 then
+    raise exception 'Invalid report';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('project-reports:'||p_user_id::text,0));
+  select * into listing from public.projects where id=p_project_id for share;
+  if not found then return false; end if;
+  if listing.owner_id=p_user_id then
+    raise exception using errcode='PZ008',message='Cannot report your own project';
+  end if;
+  if exists(select 1 from public.project_reports where project_id=p_project_id and reporter_id=p_user_id) then
+    raise exception using errcode='PZ006',message='Project already reported';
+  end if;
+  if (select count(*) from public.project_reports where reporter_id=p_user_id and created_at>now()-interval '24 hours')>=10 then
+    raise exception using errcode='PZ007',message='Daily report limit reached';
+  end if;
+  insert into public.project_reports(project_id,project_title,reporter_id,reason)
+    values(p_project_id,listing.title,p_user_id,btrim(p_reason));
+  return true;
+end $$;
+
+grant delete on public.projects to service_role;
+revoke execute on function public.update_owned_project(uuid,uuid,jsonb,text[]) from public,anon,authenticated;
+revoke execute on function public.delete_owned_project(uuid,uuid) from public,anon,authenticated;
+revoke execute on function public.report_project(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.update_owned_project(uuid,uuid,jsonb,text[]) to service_role;
+grant execute on function public.delete_owned_project(uuid,uuid) to service_role;
+grant execute on function public.report_project(uuid,uuid,text) to service_role;
+
+notify pgrst,'reload schema';
+commit;

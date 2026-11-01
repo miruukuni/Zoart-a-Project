@@ -357,7 +357,7 @@ def majors():
 _moderation_cache = ModerationCache()
 
 
-def moderate_project(body: ProjectInput, selected_majors: list[dict], user_id: UUID, request: Request):
+def moderate_project(body: ProjectInput, selected_majors: list[dict], user_id: UUID, request: Request, *, editing: bool = False):
     model = os.getenv("GEMINI_MODERATION_MODEL") or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     payload = review_payload(body.title, body.description, body.tags, selected_majors)
     key = _moderation_cache.key(str(user_id), model, payload)
@@ -368,10 +368,12 @@ def moderate_project(body: ProjectInput, selected_majors: list[dict], user_id: U
                 # Revalidate the result as well: malformed/uncertain outputs never publish.
                 decision = ModerationDecision.model_validate(ask_gemini(MODERATION_INSTRUCTION, payload, ModerationDecision, model=model))
             except Exception as error:
-                raise HTTPException(503, "We couldn't complete the content check. Your project hasn't been published. Please try again shortly.") from error
+                outcome = "Your changes haven't been saved." if editing else "Your project hasn't been published."
+                raise HTTPException(503, f"We couldn't complete the content check. {outcome} Please try again shortly.") from error
             _moderation_cache.put(key, decision)
     if decision.verdict == "block":
-        raise HTTPException(422, "Your project wasn't published. " + REJECTION_MESSAGES[decision.category] + " Edit the title or description and try again.")
+        outcome = "Your changes weren't saved. " if editing else "Your project wasn't published. "
+        raise HTTPException(422, outcome + REJECTION_MESSAGES[decision.category] + " Edit the title or description and try again.")
 
 
 @app.post("/api/projects", status_code=201)
@@ -399,6 +401,88 @@ def create_project(body: ProjectInput, request: Request, user_id: Annotated[UUID
             raise HTTPException(422, "Use an HTTPS application link to a UCI site, Google Form, or GitHub project.") from error
         logger.exception("Project creation failed")
         raise HTTPException(503, "Could not save your project. Make sure the latest database migration is applied, then try again.") from error
+    return {"ok": True}
+
+
+def require_project_owner(project_id: UUID, user_id: UUID):
+    try:
+        rows = database().table("projects").select("id").eq("id", str(project_id)).eq("owner_id", str(user_id)).execute().data
+    except Exception as error:
+        raise HTTPException(503, "Couldn't check this project's owner. Please try again.") from error
+    if not rows:
+        raise HTTPException(404, "This project isn't available to edit with your account.")
+
+
+@app.post("/api/projects/{project_id}/edit")
+def edit_project(project_id: UUID, body: ProjectInput, request: Request, user_id: Annotated[UUID, Depends(required_user_id)]):
+    require_project_owner(project_id, user_id)
+    selected_ids = body.major_ids or ([body.major_id] if body.major_id else [])
+    catalog = {item["id"]: item for item in get_majors()} if selected_ids else {}
+    if any(major_id not in catalog for major_id in selected_ids):
+        raise HTTPException(422, "Choose majors from the UCI list.")
+    moderate_project(body, [catalog[major_id] for major_id in selected_ids], user_id, request, editing=True)
+    try:
+        if selected_ids:
+            database().table("uci_majors").upsert([catalog[major_id] for major_id in selected_ids]).execute()
+        result = database().rpc("update_owned_project", {
+            "p_project_id": str(project_id), "p_user_id": str(user_id),
+            "p_project": body.model_dump(exclude={"major_ids", "major_id"}), "p_major_ids": selected_ids,
+        }).execute().data
+        if not result:
+            raise HTTPException(404, "This project is no longer available to edit.")
+    except HTTPException:
+        raise
+    except Exception as error:
+        if getattr(error, "code", None) == "PZ005":
+            raise HTTPException(422, "Use an approved HTTPS application link.") from error
+        logger.warning("Project edit failed (%s)", type(error).__name__)
+        raise HTTPException(503, "Couldn't save your changes. Please try again.") from error
+    return {"ok": True}
+
+
+@app.post("/api/projects/{project_id}/delete")
+def delete_project(project_id: UUID, user_id: Annotated[UUID, Depends(required_user_id)]):
+    try:
+        deleted = database().rpc("delete_owned_project", {"p_project_id": str(project_id), "p_user_id": str(user_id)}).execute().data
+        if not deleted:
+            raise HTTPException(404, "This project isn't available to delete with your account.")
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.warning("Project delete failed (%s)", type(error).__name__)
+        raise HTTPException(503, "Couldn't delete this project. Please try again.") from error
+    return {"ok": True}
+
+
+class ReportInput(BaseModel):
+    reason: str = Field(min_length=10, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def meaningful_reason(cls, value: str) -> str:
+        if len(value.strip()) < 10:
+            raise ValueError("Please describe the issue in at least 10 characters.")
+        return value.strip()
+
+
+@app.post("/api/projects/{project_id}/reports", status_code=201)
+def report_project(project_id: UUID, body: ReportInput, user_id: Annotated[UUID, Depends(required_user_id)]):
+    try:
+        saved = database().rpc("report_project", {"p_project_id": str(project_id), "p_user_id": str(user_id), "p_reason": body.reason}).execute().data
+        if not saved:
+            raise HTTPException(404, "This project is no longer available to report.")
+    except HTTPException:
+        raise
+    except Exception as error:
+        code = getattr(error, "code", None)
+        if code == "PZ006":
+            raise HTTPException(409, "You've already reported this project.") from error
+        if code == "PZ007":
+            raise HTTPException(429, "You've reached the limit of 10 reports in 24 hours. Please try again later.") from error
+        if code == "PZ008":
+            raise HTTPException(422, "Use project settings to manage your own post.") from error
+        logger.warning("Project report failed (%s)", type(error).__name__)
+        raise HTTPException(503, "Couldn't submit your report. Your description is still here; please try again.") from error
     return {"ok": True}
 
 

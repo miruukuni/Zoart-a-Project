@@ -18,6 +18,8 @@ export type UploadProjectModalProps = {
   onSubmit: (input: CreateProjectInput) => Promise<void>;
   /** Identifies a callback that only simulates submission. */
   demo?: boolean;
+  initialValues?: CreateProjectInput;
+  onDelete?: () => Promise<void>;
 };
 
 type Field = keyof CreateProjectInput;
@@ -42,7 +44,10 @@ function OpenUploadProjectModal({
   onClose,
   onSubmit,
   demo = false,
+  initialValues,
+  onDelete,
 }: UploadProjectModalProps) {
+  const editing = !!initialValues;
   const id = useId();
   const { user, loading: authLoading } = useAuth();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -51,7 +56,7 @@ function OpenUploadProjectModal({
   const successPanel = useRef<HTMLDivElement>(null);
   const pending = useRef(false);
   const active = useRef(false);
-  const [values, setValues] = useState<CreateProjectInput>({
+  const [values, setValues] = useState<CreateProjectInput>(initialValues ?? {
     title: "",
     author: "",
     description: "",
@@ -67,6 +72,8 @@ function OpenUploadProjectModal({
   const [normalizing, setNormalizing] = useState(false);
   const [tagNotice, setTagNotice] = useState("");
   const [submitError, setSubmitError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [majors, setMajors] = useState<Major[]>([]);
   const [majorStatus, setMajorStatus] = useState("Loading UCI majors…");
   const [majorAttempt, setMajorAttempt] = useState(0);
@@ -166,7 +173,7 @@ function OpenUploadProjectModal({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending.current || tagPending.current || status === "success") return;
+    if (pending.current || tagPending.current || confirmDelete || status === "success") return;
     const rawApplicationUrl = values.application_url?.trim() ?? "";
     const input: CreateProjectInput = {
       title: values.title.trim(),
@@ -211,6 +218,16 @@ function OpenUploadProjectModal({
     } finally {
       pending.current = false;
     }
+  }
+
+  async function removeProject() {
+    if (!onDelete || pending.current || tagPending.current) return;
+    pending.current = true;
+    setDeleting(true);
+    setSubmitError("");
+    try { await onDelete(); if (active.current) onClose(); }
+    catch (error) { if (active.current) setSubmitError(error instanceof Error ? error.message : "Couldn't delete the project."); }
+    finally { pending.current = false; if (active.current) setDeleting(false); }
   }
 
   function error(field: Field) {
@@ -272,7 +289,7 @@ function OpenUploadProjectModal({
       aria-describedby={`${id}-intro`}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (!pending.current) onClose();
       }}
       onKeyDown={(event) => {
         if (event.key !== "Tab") return;
@@ -313,15 +330,16 @@ function OpenUploadProjectModal({
           event.clientY < bounds.top ||
           event.clientY > bounds.bottom
         )
-          onClose();
+          if (!pending.current) onClose();
       }}
       className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-[460px] overflow-y-auto overscroll-contain rounded-[10px] border-4 border-[#141414] bg-[#ffebc4] p-0 font-[Arial,Helvetica,sans-serif] text-[#141414] shadow-[6px_6px_0_rgba(0,0,0,0.3)] backdrop:bg-black/60"
     >
       <header className="flex items-center justify-between gap-3 bg-[var(--sea-teal,#00ADA5)] px-4 py-2">
-        <p className="text-xs font-bold">ZOART A PROJECT / UPLOAD A PROJECT</p>
+        <p className="text-xs font-bold">ZOART A PROJECT / {editing ? "PROJECT SETTINGS" : "UPLOAD A PROJECT"}</p>
         <button
           type="button"
-          aria-label="Close Upload Project"
+          aria-label={editing ? "Close project settings" : "Close Upload Project"}
+          disabled={status === "pending" || deleting}
           onClick={onClose}
           className="flex size-7 shrink-0 items-center justify-center rounded-md border-[3px] border-[#141414] bg-[#ffebc4] text-xl font-bold leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
         >
@@ -333,13 +351,13 @@ function OpenUploadProjectModal({
           id={`${id}-heading`}
           className="text-[22px] font-bold leading-tight"
         >
-          Find your collaborators
+          {editing ? "Edit your project" : "Find your collaborators"}
         </h2>
         <p
           id={`${id}-intro`}
           className="mb-3 mt-1.5 text-[13px] leading-[18px]"
         >
-          Share your project and find people to build with.
+          {editing ? "Update your listing. Your likes, creation date and availability stay the same." : "Share your project and find people to build with."}
         </p>
         {!demo && authLoading ? <p role="status" className="py-6">Checking your account…</p> : !demo && !user ? <div className="space-y-4 rounded-xl border-2 border-[#111111] bg-white p-4"><p>Sign in to share a project and manage its availability.</p><Link href="/sign-in?next=%2Fsearch" className={`${buttonClass} inline-block bg-[#F194B4]`}>Sign in to continue</Link></div> : status === "success" ? (
           <div
@@ -349,12 +367,12 @@ function OpenUploadProjectModal({
             className="space-y-3 rounded-md border-[3px] border-[#141414] bg-white p-4"
           >
             <h3 className="text-xl font-bold">
-              {demo ? "Demo submission complete!" : "Submission complete!"}
+              {demo ? "Demo submission complete!" : editing ? "Changes saved!" : "Submission complete!"}
             </h3>
             <p className="text-sm">
               {demo
                 ? "The demo callback received your project. No database write occurred."
-                : "Your project is now available for others to discover."}
+                : editing ? "Your project has been updated." : "Your project is now available for others to discover."}
             </p>
             <button
               type="button"
@@ -372,7 +390,7 @@ function OpenUploadProjectModal({
             aria-busy={status === "pending"}
           >
             <fieldset
-              disabled={status === "pending"}
+              disabled={status === "pending" || deleting}
               className="min-w-0 space-y-2.5 disabled:opacity-70"
             >
               <legend className="sr-only">Project details</legend>
@@ -555,7 +573,7 @@ function OpenUploadProjectModal({
                 {error("application_url")}
               </div>
             </fieldset>
-            {status === "error" && (
+            {(status === "error" || (confirmDelete && submitError)) && (
               <p
                 role="alert"
                 className="mt-3 rounded-md border-2 border-[var(--coral-red,#CC404A)] bg-white p-3 text-xs font-bold text-[var(--coral-red,#CC404A)]"
@@ -564,7 +582,7 @@ function OpenUploadProjectModal({
                 Your input is still here. Please try again.
               </p>
             )}
-            <p className="mt-3 text-xs">You can have up to 4 active projects. Set one offline in My projects before adding another.</p>
+            <p className="mt-3 text-xs">You can have up to 4 active projects. Set one offline or delete it before adding another.</p>
             <p className="mt-2 text-xs">Before publishing, Gemini checks your title and description for inappropriate content. These fields are sent to Google; keep personal or sensitive details out of them.</p>
             <p role="status" className={status === "pending" ? "mt-2 text-xs font-bold" : "sr-only"}>
               {status === "pending" ? (demo ? "Submitting demo project…" : "Checking your project before publishing. Please wait…") : ""}
@@ -573,18 +591,22 @@ function OpenUploadProjectModal({
               <button
                 type="button"
                 onClick={onClose}
+                disabled={status === "pending" || deleting}
                 className={`${buttonClass} w-[30%] shrink-0 bg-white`}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={status === "pending" || normalizing}
+                disabled={status === "pending" || normalizing || deleting || confirmDelete}
                 className={`${buttonClass} flex-1 bg-[var(--sea-teal,#00ADA5)]`}
               >
-                {status === "pending" ? (demo ? "Submitting…" : "Checking & publishing…") : "Create project →"}
+                {status === "pending" ? (demo ? "Submitting…" : "Checking & saving…") : editing ? "Save changes" : "Create project →"}
               </button>
             </div>
+            {editing && onDelete && <div className="mt-5 border-t-2 border-[#111111] pt-4">
+              {confirmDelete ? <div role="group" aria-label="Confirm project deletion" className="space-y-3"><p className="text-sm font-bold">Permanently delete this project and its likes? This cannot be undone.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={deleting} onClick={() => { setConfirmDelete(false); setSubmitError(""); }} className={`${buttonClass} bg-white`}>Keep project</button><button type="button" disabled={deleting || status === "pending"} onClick={() => void removeProject()} className={`${buttonClass} bg-[#CC404A] text-white`}>{deleting ? "Deleting…" : "Delete permanently"}</button></div></div> : <button type="button" disabled={status === "pending" || normalizing} onClick={() => { setSubmitError(""); setConfirmDelete(true); }} className={`${buttonClass} bg-[#CC404A] text-white`}>Delete project</button>}
+            </div>}
           </form>
         )}
       </div>

@@ -64,6 +64,18 @@ export async function setProjectStatus(projectId: string, status: "active" | "of
     body: JSON.stringify({ status }), auth: "required",
   });
 }
+
+export async function updateProject(projectId: string, input: CreateProjectInput): Promise<void> {
+  await api(`/api/projects/${encodeURIComponent(projectId)}/edit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input), auth: "required", signal: AbortSignal.timeout(90000) });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  await api(`/api/projects/${encodeURIComponent(projectId)}/delete`, { method: "POST", auth: "required" });
+}
+
+export async function reportProject(projectId: string, reason: string): Promise<void> {
+  await api(`/api/projects/${encodeURIComponent(projectId)}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }), auth: "required" });
+}
 export async function fetchProjectsByTags(
   tagNames: string[],
   signal?: AbortSignal,

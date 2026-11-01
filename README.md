@@ -16,6 +16,8 @@ created for ZotHacks, the project is growing into a student collaboration hub.
 - Shared tag catalog with aliases and typo matching; up to **7 tags** per post.
 - Multiple UCI majors, loaded from Anteater API and kept separate from tags.
 - Google sign-in through Supabase, account likes, and owner-only status controls.
+- A cogwheel beside Apply for owner editing/deletion or private project reports.
+  See [project settings and administrator review](docs/project-settings-and-reports.md).
 - Active projects by default, offline/My projects views, a major filter, and
   sorting by popularity or creation time. Most liked is the default order.
 - Creation age, like counts, and consistent card sections with scrollable content.
@@ -172,7 +174,6 @@ HTTPS and the deployed callback/origin settings.
 
 ## Next improvements
 
-- Replace placeholder click sounds, home-page descriptions and the sign-in GIF.
-- Add a full project page and owner editing/deletion controls.
-- Add reporting and human review for moderation mistakes or missed abuse.
+- Add a full project page.
+- Add an administrator moderation dashboard and an appeal workflow.
 - Explore dedicated club and student-event/news pages as the hub grows.

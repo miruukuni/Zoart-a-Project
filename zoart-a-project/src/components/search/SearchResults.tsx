@@ -148,7 +148,7 @@ function search(value: string) {
         ) : <>
           {searchNotice && <p role="status" className="mb-4 rounded-xl border-2 border-[#111111] bg-white p-3 text-sm">{searchNotice}</p>}
           <p role="status" className="mb-5 min-w-0 font-[family-name:var(--font-search-inter)] text-sm leading-relaxed [overflow-wrap:anywhere]">{visibleProjects.length} {visibleProjects.length === 1 ? "project" : "projects"}{query && <> matching “<span>{query}</span>”</>}{category !== "All projects" && ` in ${category}`}{major && ` for ${selectedMajor ? majorLabel(selectedMajor) : "the selected major"}`}</p>
-          {visibleProjects.length ? <ProjectGrid projects={visibleProjects} sort={sort} onStatusChange={(id, status) => setProjects(previous => previous.map(project => String(project.id) === id ? { ...project, status } : project))} /> : (
+          {visibleProjects.length ? <ProjectGrid projects={visibleProjects} sort={sort} onProjectChange={reload} onStatusChange={(id, status) => setProjects(previous => previous.map(project => String(project.id) === id ? { ...project, status } : project))} /> : (
             <div className="rounded-3xl border-4 border-[#111111] bg-white p-8">
               <h2 className="text-3xl">No projects found</h2>
               <p className="mt-3 text-lg">Try another search, category, or major, or upload a project of your own.</p>
