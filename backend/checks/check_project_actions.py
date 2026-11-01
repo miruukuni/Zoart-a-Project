@@ -18,12 +18,17 @@ class ProjectActionsChecks(TestCase):
         self.db = MagicMock()
         self.db.auth.get_user.return_value = SimpleNamespace(user=SimpleNamespace(id=OWNER,is_anonymous=False))
         self.db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [{"id":PROJECT}]
+        self.db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [{"id":PROJECT,"owner_id":PROJECT}]
+        self.db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        self.db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
         self.db.rpc.return_value.execute.return_value.data = True
         self.client = TestClient(gemini.app)
         db_patch = patch.object(gemini,"database",return_value=self.db)
         moderation_patch = patch.object(gemini,"moderate_project")
+        report_patch = patch.object(gemini,"moderate_report")
         db_patch.start(); self.moderate = moderation_patch.start()
-        self.addCleanup(db_patch.stop); self.addCleanup(moderation_patch.stop)
+        self.report_review = report_patch.start()
+        self.addCleanup(db_patch.stop); self.addCleanup(moderation_patch.stop); self.addCleanup(report_patch.stop)
 
     def post(self, action, body=None, signed_in=True):
         return self.client.post(f"/api/projects/{PROJECT}/{action}",json=body,headers={"Authorization":"Bearer mock-token"} if signed_in else {})
@@ -56,7 +61,7 @@ class ProjectActionsChecks(TestCase):
         self.db.rpc.assert_not_called()
 
     def test_edit_preserves_field_limits_and_safe_links(self):
-        for changes in [{"title":"x"*81},{"description":"x"*2001},{"application_url":"https://evil.example"},{"tags":["Invented"]}]:
+        for changes in [{"title":"x"*81},{"description":"x"*2001},{"application_url":"https://evil.example"},{"contact_info":"github.com/example"},{"tags":["Invented"]}]:
             self.assertEqual(self.post("edit",{**BODY,**changes}).status_code,422)
         self.db.rpc.assert_not_called()
 
@@ -90,5 +95,26 @@ class ProjectActionsChecks(TestCase):
     def test_deleted_project_cannot_be_reported(self):
         self.db.rpc.return_value.execute.return_value.data=False
         self.assertEqual(self.post("reports",{"reason":"A valid report explanation."}).status_code,404)
+
+    def test_failed_report_review_prevents_storage(self):
+        for code in [422,503,429]:
+            self.report_review.side_effect=HTTPException(code,"Report check failed")
+            self.assertEqual(self.post("reports",{"reason":"An unrelated comment"}).status_code,code)
+        self.db.rpc.assert_not_called()
+
+    def test_self_missing_duplicate_and_daily_reports_skip_ai(self):
+        select=self.db.table.return_value.select.return_value
+        select.eq.return_value.execute.return_value.data=[]
+        self.assertEqual(self.post("reports",{"reason":"A valid concern about a post"}).status_code,404)
+        select.eq.return_value.execute.return_value.data=[{"id":PROJECT,"owner_id":OWNER}]
+        self.assertEqual(self.post("reports",{"reason":"A valid concern about a post"}).status_code,422)
+        select.eq.return_value.execute.return_value.data=[{"id":PROJECT,"owner_id":PROJECT}]
+        select.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data=[{"id":PROJECT}]
+        self.assertEqual(self.post("reports",{"reason":"A valid concern about a post"}).status_code,409)
+        select.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data=[]
+        from datetime import datetime,timezone
+        select.eq.return_value.order.return_value.limit.return_value.execute.return_value.data=[{"project_id":str(index),"created_at":datetime.now(timezone.utc).isoformat()} for index in range(10)]
+        self.assertEqual(self.post("reports",{"reason":"A valid concern about a post"}).status_code,429)
+        self.report_review.assert_not_called();self.db.rpc.assert_not_called()
 
 if __name__=="__main__": main()

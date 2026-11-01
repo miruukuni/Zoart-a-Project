@@ -9,12 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from app import gemini
-from app.project_moderation import ModerationCache, ModerationDecision, review_payload
+from app.project_moderation import ModerationCache, ModerationDecision, ProjectReviewResult, review_payload
 
 
 OWNER = "11111111-1111-4111-8111-111111111111"
 OTHER = "22222222-2222-4222-8222-222222222222"
 ALLOW = ModerationDecision(verdict="allow", category="none")
+AI_ALLOW = ProjectReviewResult(decision="allow")
 PROJECT = dict(title="Study space finder", author="Private Author",
                description="Map available study spaces and recruit Python collaborators.",
                contact_info="private@example.invalid", application_url="https://forms.gle/example",
@@ -27,7 +28,7 @@ class SubmissionChecks(unittest.TestCase):
         self.db.auth.get_user.return_value = SimpleNamespace(user=SimpleNamespace(id=OWNER, is_anonymous=False))
         self.client = TestClient(gemini.app)
         self.patches = [patch.object(gemini, "database", return_value=self.db),
-                        patch.object(gemini, "ask_gemini", return_value=ALLOW),
+                        patch.object(gemini, "ask_gemini", return_value=AI_ALLOW),
                         patch.object(gemini, "get_majors", return_value=[dict(id="CS", name="Computer Science", degree="B.S.")]),
                         patch.object(gemini, "gate", gemini.GeminiGate()),
                         patch.object(gemini, "_moderation_cache", ModerationCache())]
@@ -48,7 +49,7 @@ class SubmissionChecks(unittest.TestCase):
         gemini.gate = gemini.GeminiGate()
 
     def test_approval_before_writes_and_verified_ownership(self):
-        self.ai.side_effect = lambda *args, **kwargs: (self.assert_no_write() or ALLOW)
+        self.ai.side_effect = lambda *args, **kwargs: (self.assert_no_write() or AI_ALLOW)
         result = self.post({**PROJECT, "owner_id": OTHER, "moderation_approved": True})
         self.assertEqual(result.status_code, 201, result.text)
         payload = self.ai.call_args.args[1]
@@ -67,7 +68,7 @@ class SubmissionChecks(unittest.TestCase):
         for category in ["sexual_content", "hate_or_harassment", "harmful_activity", "scam_or_spam", "privacy", "not_a_project"]:
             with self.subTest(category=category):
                 self.fresh_gate()
-                self.ai.return_value = ModerationDecision(verdict="block", category=category)
+                self.ai.return_value = ProjectReviewResult(decision=category)
                 result = self.post({**PROJECT, "title": category})
                 self.assertEqual(result.status_code, 422)
                 self.assertIn("wasn't published", result.json()["detail"])
@@ -83,7 +84,7 @@ class SubmissionChecks(unittest.TestCase):
         self.assertEqual(self.ai.call_count, 2)
 
     def test_invalid_decision_and_client_bypass_are_rejected(self):
-        for verdict in [None, {"verdict": "allow", "category": "privacy"}, {"verdict": "allow"}, {"verdict": "uncertain", "category": "none"}]:
+        for verdict in [None, {"verdict": "allow"}, {"decision": "uncertain"}, {}]:
             with self.subTest(verdict=verdict):
                 self.fresh_gate()
                 self.ai.return_value = verdict
@@ -121,7 +122,7 @@ class SubmissionChecks(unittest.TestCase):
         self.assertEqual(self.ai.call_count, 3)
 
     def test_blocked_retries_are_cached_without_publishing(self):
-        self.ai.return_value = ModerationDecision(verdict="block", category="scam_or_spam")
+        self.ai.return_value = ProjectReviewResult(decision="scam_or_spam")
         self.assertEqual(self.post().status_code, 422)
         self.assertEqual(self.post().status_code, 422)
         self.assertEqual(self.ai.call_count, 1)

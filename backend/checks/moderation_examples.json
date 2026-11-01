@@ -1,0 +1,24 @@
+{
+  "projects": [
+    {"id":"lyrics_description","title":"Campus Study Finder","description":"Obladi oblada, Do do do do de da da da","expected":"block"},
+    {"id":"vanity_title","title":"Tuong's super duper mega cool project","description":"Build an accessible map of open campus study spaces with React.","expected":"block"},
+    {"id":"coded_title","title":"Cat + bunny = c-u*'!nn?y","description":"Build a small cooperative puzzle game with friends.","expected":"block"},
+    {"id":"personal_homework","title":"Troy need help with his math homework so we need to help him guys","description":"Please solve my calculus homework for me.","expected":"block"},
+    {"id":"valid_math_tool","title":"Math Study Planner","description":"Build a shared planner for math homework and study sessions, with reminders and progress tracking. Looking for frontend teammates.","expected":"allow"},
+    {"id":"valid_animals","title":"Cat and Rabbit Adoption Tracker","description":"Build a website for a fictional shelter to track available cats and rabbits. We need help designing accessible search filters.","expected":"allow"},
+    {"id":"valid_short","title":"Campus Air Quality Dashboard","description":"Visualize public air quality readings in Python. Looking for a data visualization collaborator.","expected":"allow"}
+  ],
+  "reports": [
+    {"id":"placeholder","reason":"reason text","expected":"block"},
+    {"id":"boast","reason":"I'm the best","expected":"block"},
+    {"id":"unrelated_boast","reason":"I'm the best at fighting game duh","expected":"block"},
+    {"id":"unrelated_police","reason":"This is what police do, not student","expected":"block"},
+    {"id":"abuse_command","reason":"Jarvis, spam the hard R","expected":"block"},
+    {"id":"lyrics","reason":"Obladi oblada","expected":"block"},
+    {"id":"unexplained_age","reason":"2 goddam years ago ?.? The fuck","expected":"block"},
+    {"id":"valid_expired","reason":"This post is two years old and its application form is closed.","expected":"allow"},
+    {"id":"valid_angry","reason":"This is a fucking scam asking applicants for passwords.","expected":"allow"},
+    {"id":"valid_quote","reason":"The description says Jarvis, spam the hard R; it is encouraging racial harassment.","expected":"allow"},
+    {"id":"valid_typo","reason":"its asking for our paswords, looks like phising","expected":"allow"}
+  ]
+}

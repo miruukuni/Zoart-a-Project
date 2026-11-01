@@ -8,6 +8,12 @@ created for ZotHacks, the project is growing into a student collaboration hub.
 
 ## Current features
 
+New uploads default Author to the signed-in display name. Contact fields accept
+plain email/phone/@handles, with website links kept in the Apply field. Project
+screening rejects filler and uninformative listings; report screening checks
+relevance while allowing informal or angry explanations. See
+[content screening and deployment settings](docs/content-screening.md).
+
 - Responsive home and project pages with the Zoart mascot and cream background.
 - A project-page mascot reminder after 20 seconds, then every 90 seconds, with
   three editable messages, click/10-second dismissal and a sound control.
@@ -55,9 +61,10 @@ files do not already exist. Fill them in locally; never commit real secrets.
 | `backend/.env`               | `SUPABASE_URL`                  | Existing Supabase project URL                                    |
 | `backend/.env`               | `SUPABASE_SECRET_KEY`           | Private backend `sb_secret_...` key                              |
 | `backend/.env`               | `GEMINI_API_KEY`                | Private Gemini API key                                           |
-| `backend/.env`               | `GEMINI_MODEL`                  | Default model, currently `gemini-3.5-flash-lite`                 |
+| `backend/.env`               | `GEMINI_MODEL`                  | Default model, currently `gemini-3.8-flash`                 |
 | `backend/.env`               | `GEMINI_SEARCH_MODEL`           | Optional independent search model override                       |
 | `backend/.env`               | `GEMINI_MODERATION_MODEL`       | Optional independent moderation model override                   |
+| `backend/.env`               | `GEMINI_REPORT_MODEL`           | Optional independent report relevance model override             |
 | `backend/.env`               | `CORS_ORIGINS`                  | Comma-separated frontend origins                                 |
 | `zoart-a-project/.env.local` | `NEXT_PUBLIC_SUPABASE_URL`      | Same Supabase project URL                                        |
 | `zoart-a-project/.env.local` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public `sb_publishable_...` key; variable retains its older name |

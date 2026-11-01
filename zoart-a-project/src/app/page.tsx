@@ -20,10 +20,12 @@ const ZOARTS = [
 ];
 
 const TODOS = [
-  { label: "'Learn more' page for projects", bg: "#F194B4" },
-  { label: "Settings page for projects", bg: "#8DB4FF" },
+  { label: "Full screen for projects + Comments", bg: "#F194B4" },
+  { label: "More setting configurations for projects you own", bg: "#8DB4FF" },
   { label: "Page dedicated for club and organizations", bg: "#69be8a" },
-  { label: "Page dedicated for news and opportunities", bg: "#ffc295" },
+  { label: "Bulletin board for news and opportunities", bg: "#ffc295" },
+  { label: "Dark mode, seasonal themes, holiday decorations", bg: "#f9c7d5" },
+
 ];
 
 const SLIDE_SECONDS = 1.8;

@@ -21,7 +21,14 @@ the existing power button.
 Other visitors get Report project. Sign-in is required to submit an explanation
 of 10–2,000 characters. One report per account/project and 10 reports per rolling
 24 hours are enforced in the database, including concurrent requests. Reports
-do not automatically hide a listing and are not sent to Gemini.
+do not automatically hide a listing. Before saving, Gemini checks whether the
+reason explains a concern about a project. Informal, angry or profane reports
+remain allowed when relevant; filler, unrelated boasts and nonsense are rejected.
+Only a contact-redacted reason is sent to Google, with no account or project data.
+Failed checks preserve the entered text. Missing/self/duplicate/day-limited
+reports are rejected before AI work; the database still enforces the limits
+atomically. Report decisions use a separate bounded ten-minute cache and the
+shared AI gate. Keep personal/sensitive information out of report reasons.
 
 In Supabase's Table Editor, open `public.project_reports` and filter `status`
 to `pending`. Review the reason and project, then set status to `reviewed` or

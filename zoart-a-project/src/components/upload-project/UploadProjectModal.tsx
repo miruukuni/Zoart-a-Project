@@ -10,6 +10,8 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { TITLE_LIMIT, DESCRIPTION_LIMIT, APPLICATION_URL_LIMIT } from "@/lib/project-limits";
 import { applicationUrl, APPLICATION_LINK_HELP } from "@/lib/application-url";
+import { profileName } from "@/lib/profile-name";
+import { contactHasLink, CONTACT_LINK_HELP } from "@/lib/contact-info";
 
 
 export type UploadProjectModalProps = {
@@ -50,6 +52,8 @@ function OpenUploadProjectModal({
   const editing = !!initialValues;
   const id = useId();
   const { user, loading: authLoading } = useAuth();
+  const defaultAuthor = profileName(user);
+  const authorEdited = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const tagInput = useRef<HTMLInputElement>(null);
@@ -58,7 +62,7 @@ function OpenUploadProjectModal({
   const active = useRef(false);
   const [values, setValues] = useState<CreateProjectInput>(initialValues ?? {
     title: "",
-    author: "",
+    author: defaultAuthor,
     description: "",
     contact_info: "",
     application_url: "",
@@ -81,6 +85,14 @@ function OpenUploadProjectModal({
   const [status, setStatus] = useState<
     "idle" | "pending" | "success" | "error"
   >("idle");
+
+  useEffect(() => {
+    if (editing || !defaultAuthor) return;
+    const timer = window.setTimeout(() => {
+      setValues(previous => authorEdited.current || previous.author ? previous : { ...previous, author: defaultAuthor });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [defaultAuthor, editing]);
   const tagQuery = customTag.trim();
   const tagChoices = matchingTags(tagQuery)
     .filter(
@@ -129,6 +141,7 @@ function OpenUploadProjectModal({
   }, [majorAttempt]);
 
   function update(field: Exclude<Field, "tags" | "major_ids">, value: string) {
+    if (field === "author") authorEdited.current = true;
     setValues((previous) => ({ ...previous, [field]: value }));
     if (value.trim())
       setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -195,6 +208,7 @@ function OpenUploadProjectModal({
     if (input.description.length > DESCRIPTION_LIMIT) nextErrors.description = `Use ${DESCRIPTION_LIMIT} characters or fewer.`;
     if (!input.contact_info)
       nextErrors.contact_info = "Enter an email address or contact handle.";
+    else if (contactHasLink(input.contact_info)) nextErrors.contact_info = "Contact info cannot contain website links.";
     if (rawApplicationUrl && !applicationUrl(rawApplicationUrl))
       nextErrors.application_url = APPLICATION_LINK_HELP;
     setErrors(nextErrors);
@@ -563,7 +577,7 @@ function OpenUploadProjectModal({
                   id={`${id}-contact-note`}
                   className="mt-2 text-[11px] leading-4"
                 >
-                  This contact info will be visible on your project.
+                  This contact info will be visible on your project. {CONTACT_LINK_HELP}
                 </p>
               </div>
               <div>
@@ -583,7 +597,7 @@ function OpenUploadProjectModal({
               </p>
             )}
             <p className="mt-3 text-xs">You can have up to 4 active projects. Set one offline or delete it before adding another.</p>
-            <p className="mt-2 text-xs">Before publishing, Gemini checks your title and description for inappropriate content. These fields are sent to Google; keep personal or sensitive details out of them.</p>
+            <p className="mt-2 text-xs">Before publishing, Gemini checks your title and description for inappropriate content. These fields are sent to Google; keep personal or sensitive details out of them. Might take a moment to finish processing because Gemini free tier is slow.</p>
             <p role="status" className={status === "pending" ? "mt-2 text-xs font-bold" : "sr-only"}>
               {status === "pending" ? (demo ? "Submitting demo project…" : "Checking your project before publishing. Please wait…") : ""}
             </p>

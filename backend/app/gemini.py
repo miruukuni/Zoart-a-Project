@@ -22,12 +22,13 @@ from google.genai import types
 from pydantic import BaseModel, Field, field_validator
 from supabase import create_client
 from supabase_auth.errors import AuthRetryableError
-from .project_safety import application_url
+from .project_safety import application_url, plain_contact
 from .project_search import TagSearchPlan, validated_plan, fallback_plan, matches_plan, plan_summary
-from .project_moderation import MODERATION_INSTRUCTION, ModerationCache, ModerationDecision, REJECTION_MESSAGES, review_payload
+from .project_moderation import MODERATION_INSTRUCTION, REPORT_INSTRUCTION, ModerationCache, ModerationDecision, ProjectReviewResult, ReportDecision, REJECTION_MESSAGES, review_payload, review_text
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 logger = logging.getLogger(__name__)
+DEFAULT_MODEL = "gemini-3.8-flash"
 CATALOG = json.loads((Path(__file__).resolve().parents[2] / "zoart-a-project/src/data/tags.json").read_text())
 MAX_TAGS = 7
 LIMITS = json.loads((Path(__file__).resolve().parents[2] / "zoart-a-project/src/data/project-limits.json").read_text())
@@ -107,6 +108,11 @@ class ProjectInput(BaseModel):
     @classmethod
     def valid_application_url(cls, value: str | None) -> str | None:
         return application_url(value)
+
+    @field_validator("contact_info")
+    @classmethod
+    def contact_without_links(cls, value: str) -> str:
+        return plain_contact(value)
 
     @field_validator("major_ids")
     @classmethod
@@ -215,18 +221,19 @@ def required_user_id(user_id: Annotated[UUID | None, Depends(optional_user_id)])
 def ask_gemini(instruction: str, payload: dict, schema: type[BaseModel], model: str | None = None):
     if not os.getenv("GEMINI_API_KEY"):
         raise HTTPException(503, "AI is not configured yet.")
+    chosen_model = model or os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
     try:
         with genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=types.HttpOptions(timeout=45000, retry_options=types.HttpRetryOptions(attempts=1))) as client:
             result = client.models.generate_content(
-                model=model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite"),
+                model=chosen_model,
                 contents=json.dumps(payload),
                 config=types.GenerateContentConfig(system_instruction=instruction, response_mime_type="application/json", response_json_schema=schema.model_json_schema(), max_output_tokens=2048 if model else 8192,
-                    thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW) if model and model.startswith("gemini-3.8") else None),
+                    thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW) if chosen_model.startswith("gemini-3.8") else None),
             )
         return schema.model_validate_json(result.text or "")
     except Exception as error:
         # SDK/validation exceptions can contain submitted text; keep it out of logs.
-        logger.warning("Gemini request failed (%s)", type(error).__name__)
+        logger.warning("Gemini request failed (%s, code=%s)", type(error).__name__, getattr(error, "code", None))
         raise HTTPException(503, "AI is unavailable right now. Please try again shortly.") from error
 
 
@@ -270,7 +277,7 @@ SEARCH_INSTRUCTION = (
 @app.post("/api/search_projects")
 def search_projects(body: Query, request: Request):
     with gate.enter(request.client.host if request.client else "unknown"):
-        model = os.getenv("GEMINI_SEARCH_MODEL") or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+        model = os.getenv("GEMINI_SEARCH_MODEL") or os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
         fingerprint = json.dumps([body.user_query.casefold(), model, CATALOG], sort_keys=True)
         key = hashlib.sha256(fingerprint.encode()).hexdigest()
         now = time.monotonic()
@@ -355,10 +362,28 @@ def majors():
 
 
 _moderation_cache = ModerationCache()
+_report_cache = ModerationCache()
+
+
+def moderate_report(reason: str, user_id: UUID, request: Request):
+    model = os.getenv("GEMINI_REPORT_MODEL") or os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
+    payload = {"reason": review_text(reason)}
+    key = _report_cache.key(str(user_id), model, payload, REPORT_INSTRUCTION)
+    decision = _report_cache.get(key)
+    if decision is None:
+        with gate.enter(request.client.host if request.client else "unknown"):
+            try:
+                result = ReportDecision.model_validate(ask_gemini(REPORT_INSTRUCTION, payload, ReportDecision, model=model))
+            except Exception as error:
+                raise HTTPException(503, "We couldn't check your report right now. It hasn't been submitted; your explanation is still here. Please try again shortly.") from error
+            decision = ModerationDecision(verdict=result.verdict, category="none" if result.verdict == "allow" else "not_a_project")
+            _report_cache.put(key, decision)
+    if decision.verdict == "block":
+        raise HTTPException(422, "Please explain what is wrong with this project. A relevant concern is enough; filler, unrelated comments or nonsense cannot be submitted as a report.")
 
 
 def moderate_project(body: ProjectInput, selected_majors: list[dict], user_id: UUID, request: Request, *, editing: bool = False):
-    model = os.getenv("GEMINI_MODERATION_MODEL") or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    model = os.getenv("GEMINI_MODERATION_MODEL") or os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
     payload = review_payload(body.title, body.description, body.tags, selected_majors)
     key = _moderation_cache.key(str(user_id), model, payload)
     decision = _moderation_cache.get(key)
@@ -366,7 +391,7 @@ def moderate_project(body: ProjectInput, selected_majors: list[dict], user_id: U
         with gate.enter(request.client.host if request.client else "unknown"):
             try:
                 # Revalidate the result as well: malformed/uncertain outputs never publish.
-                decision = ModerationDecision.model_validate(ask_gemini(MODERATION_INSTRUCTION, payload, ModerationDecision, model=model))
+                decision = ProjectReviewResult.model_validate(ask_gemini(MODERATION_INSTRUCTION, payload, ProjectReviewResult, model=model)).as_decision()
             except Exception as error:
                 outcome = "Your changes haven't been saved." if editing else "Your project hasn't been published."
                 raise HTTPException(503, f"We couldn't complete the content check. {outcome} Please try again shortly.") from error
@@ -466,7 +491,27 @@ class ReportInput(BaseModel):
 
 
 @app.post("/api/projects/{project_id}/reports", status_code=201)
-def report_project(project_id: UUID, body: ReportInput, user_id: Annotated[UUID, Depends(required_user_id)]):
+def report_project(project_id: UUID, body: ReportInput, request: Request, user_id: Annotated[UUID, Depends(required_user_id)]):
+    # Check existence, self-reporting, and duplicate/day limits before AI work.
+    try:
+        target = database().table("projects").select("id,owner_id").eq("id", str(project_id)).execute().data
+        if not target:
+            raise HTTPException(404, "This project is no longer available to report.")
+        if target[0].get("owner_id") == str(user_id):
+            raise HTTPException(422, "Use project settings to manage your own post.")
+        duplicate = database().table("project_reports").select("id").eq("project_id", str(project_id)).eq("reporter_id", str(user_id)).limit(1).execute().data
+        if duplicate:
+            raise HTTPException(409, "You've already reported this project.")
+        recent = database().table("project_reports").select("project_id,created_at").eq("reporter_id", str(user_id)).order("created_at", desc=True).limit(10).execute().data
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        if sum(datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")) > cutoff for row in recent) >= 10:
+            raise HTTPException(429, "You've reached the limit of 10 reports in 24 hours. Please try again later.")
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(503, "Couldn't check this report. Please try again.") from error
+    moderate_report(body.reason, user_id, request)
     try:
         saved = database().rpc("report_project", {"p_project_id": str(project_id), "p_user_id": str(user_id), "p_reason": body.reason}).execute().data
         if not saved:
